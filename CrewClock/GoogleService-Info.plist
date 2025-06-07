@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>1008115626188-61913ct4nmvh5frhi9o80fbfg50p89f9.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.1008115626188-61913ct4nmvh5frhi9o80fbfg50p89f9</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDONhG3WNlQK5OU8uDYc4GwvBRTsIDkTPw</string>
+	<key>GCM_SENDER_ID</key>
+	<string>1008115626188</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.molanter.CrewClock</string>
+	<key>PROJECT_ID</key>
+	<string>crewclock-9a62b</string>
+	<key>STORAGE_BUCKET</key>
+	<string>crewclock-9a62b.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:1008115626188:ios:7830db295c1d7322601269</string>
+</dict>
+</plist>
