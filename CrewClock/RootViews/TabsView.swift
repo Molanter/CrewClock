@@ -1,5 +1,5 @@
 //
-//  TabView.swift
+//  TabsView.swift
 //  CrewClock
 //
 //  Created by Edgars Yarmolatiy on 6/4/25.
@@ -7,35 +7,40 @@
 
 import SwiftUI
 
-struct TabView: View {
+struct TabsView: View {
     @State var selection: Int = 0
     
+    init() {
+        let tabBarAppearance = UITabBar.appearance()
+        tabBarAppearance.backgroundColor = UIColor.systemGray6
+    }
+    
     var body: some View {
-        NavigationStack {
-            TabView(selection: $selection) {
-                LogsTabView()
-                    .tabItem {
-                        Label("Logs", systemImage: "list.bullet.below.rectangle")
-                    }
-                    .tag(0)
+        TabView(selection: $selection) {
+            LogsTabView()
+                .tabItem {
+                    Label("Logs", systemImage: "list.bullet.below.rectangle")
+                }
+                .tag(0)
+                .navigationTitle("Logs")
 
-                LogsTabView()
-                    .tabItem {
-                        Label("Clock", systemImage: "clock")
-                    }
-                    .tag(1)
+            ClockTabView()
+                .tabItem {
+                    Label("Clock", systemImage: "clock")
+                }
+                .tag(1)
 
-                LogsTabView()
-                    .tabItem {
-                        Label("Settings", systemImage: "gearshape")
-                    }
-                    .tag(2)
-            }
+            SettingsTabView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .tag(2)
+                .navigationTitle("Settings")
         }
     }
 }
 
 
 #Preview {
-    TabView()
+    TabsView()
 }

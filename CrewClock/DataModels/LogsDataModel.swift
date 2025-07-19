@@ -10,25 +10,64 @@
 import Foundation
 import FirebaseFirestore
 
-struct CrewLog: Identifiable {
-    var id: String { documentID }
-    var documentID: String
-    var name: String
+//struct Log: Identifiable, Codable {
+//    @DocumentID var id: String?
+//    var projectName: String
+//    var comment: String
+//    var date: Date
+//    var timeStarted: String
+//    var timeFinished: String
+//    var crewUID: [String]
+//    var expenses: Double
+//}
+
+struct LogModel {
+    var logId: String
+    var projectName: String
     var comment: String
     var date: Date
-    var timeStarted: String
-    var timeFinished: String
+    var timeStarted: Date
+    var timeFinished: Date
+    var crewUID: [String]
+    var expenses: Double
+    var row: Int
+
+    init(logId: String = "", projectName: String = "", comment: String = "", date: Date = Date(), timeStarted: Date = Date(), timeFinished: Date = Date(), crewUID: [String] = [], expenses: Double = 0.0, row: Int = 0) {
+        self.logId = logId
+        self.projectName = projectName
+        self.comment = comment
+        self.date = date
+        self.timeStarted = timeStarted
+        self.timeFinished = timeFinished
+        self.crewUID = crewUID
+        self.expenses = expenses
+        self.row = row
+    }
+}
+
+struct LogFB: Identifiable, Codable {
+    var id: String { documentID }
+    var documentID: String
+    var spreadsheetId: String
+    var row: Int
+    var projectName: String
+    var comment: String
+    var date: Date
+    var timeStarted: Date
+    var timeFinished: Date
     var crewUID: [String]
     var expenses: Double
 
-    init(data: [String: Any]) {
-        self.documentID = data["id"] as? String ?? ""
-        self.name = data["name"] as? String ?? ""
+    init(data: [String: Any], documentId: String) {
+        self.documentID = documentId
+        self.spreadsheetId = data["spreadsheetId"] as? String ?? ""
+        self.row = data["row"] as? Int ?? 0
+        self.projectName = data["projectName"] as? String ?? ""
         self.comment = data["comment"] as? String ?? ""
         self.date = (data["date"] as? Timestamp)?.dateValue() ?? Date()
-        self.timeStarted = data["time_started"] as? String ?? ""
-        self.timeFinished = data["time_finished"] as? String ?? ""
-        self.crewUID = data["crew_uid"] as? [String] ?? []
+        self.timeStarted = (data["timeStarted"] as? Timestamp)?.dateValue() ?? Date()
+        self.timeFinished = (data["timeFinished"] as? Timestamp)?.dateValue() ?? Date()
+        self.crewUID = data["crewUID"] as? [String] ?? []
         self.expenses = data["expenses"] as? Double ?? 0.0
     }
 }

@@ -28,7 +28,7 @@ struct SignInView: View {
                 .frame(maxWidth: .infinity)
                 .background(Color.blue)
                 .foregroundColor(.white)
-                .cornerRadius(12)
+                .cornerRadius(K.UI.cornerRadius)
             }
             .padding(.horizontal)
         }

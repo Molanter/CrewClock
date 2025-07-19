@@ -8,12 +8,11 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var authViewModel = AuthViewModel()
-    @StateObject private var sheetViewModel = SpreadSheetViewModel()
+    
     var body: some View {
         RootView()
-            .environmentObject(authViewModel)
-            .environmentObject(sheetViewModel)
+            .accentColor(Color.indigo)
+            
     }
 }
 

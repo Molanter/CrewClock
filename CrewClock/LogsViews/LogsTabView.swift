@@ -8,135 +8,100 @@
 import SwiftUI
 
 struct LogsTabView: View {
+    @State private var searchText = ""
+    @State var showAddLogSheet = false
+    @State var showAddProjectSheet = false
+    
+    @EnvironmentObject var logsViewModel: LogsViewModel
+
+    private var filteredLogs: [LogFB] {
+        if searchText.isEmpty {
+            return logsViewModel.logs
+                .sorted { $0.date > $1.date }
+        }else {
+            return logsViewModel.logs
+                .sorted { $0.date > $1.date }
+                .filter {
+                $0.projectName.localizedCaseInsensitiveContains(searchText) ||
+                $0.comment.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+    
     var body: some View {
-        NavigationView {
-            list
-            .navigationTitle("Logs")
-        }
-    }
-    
-    var list: some View {
-        VStack {
-            List {
-                logItem
-    //                ForEach(sampleLogs, id: \.self) { log in
-    //                    VStack(alignment: .leading) {
-    //                        Text(log.title)
-    //                            .font(.headline)
-    //                        Text(log.message)
-    //                            .font(.subheadline)
-    //                            .foregroundColor(.gray)
-    //                    }
-    //                    .padding(.vertical, 4)
-    //                }
+        NavigationStack {
+            switchView
+            .toolbar { toolbarContent }
+            .sheet(isPresented: $showAddLogSheet) {
+                AddLogView(showAddLogSheet: $showAddLogSheet)
+                    .tint(.indigo)
             }
-            footer
-        }
-        .background(Color(.systemGray6))
-    }
-    
-    var logItem: some View {
-        VStack(alignment: .leading) {
-            HStack(alignment: .center) {
-                VStack(alignment: .leading) {
-                    Text("✅ " + "May 26, 2025")
-                        .font(.footnote)
-                    Text("8:00AM - 3:00PM")
-                        .font(.callout)
-                        .bold()
-                }
-                Spacer()
-                projectsMenu
-
+            .sheet(isPresented: $showAddProjectSheet) {
+                AddProjectView(showAddProjectSheet: $showAddProjectSheet)
+                    .tint(.indigo)
             }
-            Text("Framed kitchen walls")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            .onAppear(perform: {
+                logsViewModel.fetchLogs()
+            })
         }
     }
     
-    var projectsMenu: some View {
-        Menu {
+    @ViewBuilder
+    private var switchView: some View {
+        ZStack {
+            if logsViewModel.logs.isEmpty {
+                Text("❌ No logs available.")
+            } else {
+                view
+                    .navigationTitle("Logs")
+            }
+        }
+    }
+    
+    @ViewBuilder
+    var view: some View {
+        ZStack(alignment: .bottom) {
+                list
+                footer
+            }
+            .frame(maxHeight: .infinity)
+    }
+    
+    @ViewBuilder
+    private var list: some View {
+        List(filteredLogs) { log in
+            LogRowView(selectedProject: .constant(log), log: log)
+        }
+        .refreshable {
+            logsViewModel.fetchLogs()
+        }
+        .searchable(text: $searchText, placement: .navigationBarDrawer, prompt: "Search logs")
+        .padding(.bottom, 50)
+    }
+    
+    private var footer: some View {
+        WorkingFooterView()
+    }
+    
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
             Button {
-                print("Jordan's kitchen")
+                self.showAddProjectSheet.toggle()
             } label: {
-                Text("Jordan's kitchen")
+                Label("add project", systemImage: "folder.badge.plus")
             }
-
-        } label: {
-            HStack {
-                Text("Jordan's kitchen")
-                    .font(.callout)
-                    .lineLimit(1)
-                Image(systemName: "chevron.down")
-            }
-            .foregroundStyle(Color(.cyan))
-            .padding(7)
-            .background {
-                RoundedRectangle(cornerRadius: 15)
-                    .fill(Color(.cyan))
-                    .opacity(0.5)
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                self.showAddLogSheet.toggle()
+            } label: {
+                Label("add log", systemImage: "plus")
             }
         }
     }
-    
-    var footer: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text("Today's time: ") + Text("8:00AM Clocked In").bold()                        .font(.callout)
-                HStack(alignment: .center) {
-                    Text("Working on: ")
-                        .font(.callout)
-                        .bold()
-                    projectsMenu
-                }
-            }
-            .padding(15)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-        .background {
-            Rectangle()
-                .fill(Color(.white))
-                .cornerRadius(20, corners: [.topLeft, .topRight])
-        }
-
-    }
 }
-
-struct LogEntry: Hashable {
-    let title: String
-    let message: String
-}
-
-let sampleLogs: [LogEntry] = [
-    LogEntry(title: "✅ Success", message: "Spreadsheet ID submitted to Firebase."),
-    LogEntry(title: "❌ Error", message: "Missing or insufficient permissions."),
-    LogEntry(title: "ℹ️ Info", message: "Firestore write completed."),
-    LogEntry(title: "⚠️ Warning", message: "Sheet1!A1 range not found.")
-]
 
 #Preview {
     LogsTabView()
-}
-
-
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-    
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
-    }
 }

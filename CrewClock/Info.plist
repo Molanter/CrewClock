@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!--
-   Info.plist
-   CrewClock
-
-   Created by Edgars Yarmolatiy on 5/27/25.
-   Copyright (c) 2025 ___ORGANIZATIONNAME___. All rights reserved.
--->
 <plist version="1.0">
-<dict/>
+<dict>
+	<key>GIDClientID</key>
+	<string>1008115626188-61913ct4nmvh5frhi9o80fbfg50p89f9.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.1008115626188-61913ct4nmvh5frhi9o80fbfg50p89f9</string>
+			</array>
+		</dict>
+	</array>
+</dict>
 </plist>

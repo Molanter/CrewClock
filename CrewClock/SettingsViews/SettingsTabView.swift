@@ -6,18 +6,20 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 struct SettingsTabView: View {
+    @EnvironmentObject private var userViewModel: UserViewModel
+    
+    private let user = Auth.auth().currentUser
+    
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("Account")) {
-                    NavigationLink("Profile Info", destination: Text("Profile Info View"))
-                    Button("Sign Out") {
-                        // TODO: Add sign-out logic
-                    }
-                }
+                profileHeaderSection
 
+                connectionsSection
+                
                 Section(header: Text("Time Tracking")) {
                     NavigationLink("Preferences", destination: Text("Time Tracking Preferences View"))
                 }
@@ -59,8 +61,55 @@ struct SettingsTabView: View {
             .navigationTitle("Settings")
         }
     }
+    
+    private var profileHeaderSection: some View {
+        Section(header: Text("Account")) {
+            if let user = user {
+                HStack(spacing: 10) {
+                        profilePicture(user)
+                    VStack(alignment: .leading) {
+                        Text(user.displayName!)
+                        Text(user.email!)
+                    }
+                }
+                .padding(.vertical)
+            }
+            NavigationLink("Profile Info", destination: UserRowView(uid: "v51yL1dwlQWFCAGfMWPuvpVUUXl1"))
+        }
+    }
+    
+    private var connectionsSection: some View {
+        HStack(spacing: 15) {
+            if let connections = userViewModel.user?.connections.count {
+                SettingRoundedButton(image: false, text1: "Connections", text2: connections.description)
+            }
+                SettingRoundedButton(image: true, text1: "rectangle.portrait.and.arrow.right", text2: "Sign Out")
+        }
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
+    }
+    
+    private func profilePicture(_ user: User) -> some View {
+        AsyncImage(url: user.photoURL) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView() // While loading
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                case .failure:
+                    Image(systemName: "person.crop.circle.dashed")
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 50)
+            .cornerRadius(.infinity)
+    }
 }
-
-#Preview {
-    SettingsTabView()
-}
+//
+//#Preview {
+//    SettingsTabView()
+//}

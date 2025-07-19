@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "crewclock-9a62b",
+    "prod": "crewclock-9a62b"
+  },
+  "targets": {},
+  "etags": {}
+}

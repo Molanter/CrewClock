@@ -8,11 +8,13 @@
 import SwiftUI
 import GoogleSignIn
 import FirebaseAuth
+import FirebaseFirestore
 
 class AuthViewModel: ObservableObject {
     @Published var isSignedIn = false
     @Published var userName: String?
     @Published var userEmail: String?
+    @Published var userToken: String?
 
     
     init() {
@@ -24,11 +26,20 @@ class AuthViewModel: ObservableObject {
             self.isSignedIn = true
             self.userName = user.displayName
             self.userEmail = user.email
-            print("✅ Restored session: \(user.email ?? "")")
+            print("✅ Restored Firebase session: \(user.email ?? "")")
+        }
+
+        GIDSignIn.sharedInstance.restorePreviousSignIn { [weak self] user, error in
+            if let user = user {
+                self?.userToken = user.accessToken.tokenString
+                print("🟢 Restored Google access token: \(self?.userToken ?? "nil")")
+            } else {
+                print("⚠️ Google user not restored: \(error?.localizedDescription ?? "unknown error")")
+            }
         }
     }
     
-    
+    //MARK: SignIn with Google
     func signInWithGoogle() {
         guard let rootVC = UIApplication.shared.connectedScenes
                 .compactMap({ $0 as? UIWindowScene })
@@ -38,15 +49,9 @@ class AuthViewModel: ObservableObject {
             return
         }
 
-        let additionalScopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive.file"
-        ]
-
         GIDSignIn.sharedInstance.signIn(
             withPresenting: rootVC,
             hint: nil,
-            additionalScopes: additionalScopes
         ) { [weak self] result, error in
             if let error = error {
                 print("❌ Google Sign-In failed: \(error.localizedDescription)")
@@ -74,8 +79,24 @@ class AuthViewModel: ObservableObject {
                     self?.userEmail = user.profile?.email
                     print("✅ Signed in as \(user.profile?.email ?? "-")")
                     print("🟢 Access token for Google APIs: \(accessToken)")
+                    self?.checkIfSignedIn()
+                    
+                    
                 }
             }
+        }
+    }
+    
+    func setProfile() {
+        if let user = Auth.auth().currentUser {
+            let userData: [String: Any] = [
+                "name": user.displayName ?? "",
+                "email": user.email ?? "",
+                "uid": user.uid,
+                "profileImage": user.photoURL?.absoluteString ?? ""
+            ]
+            
+            Firestore.firestore().collection("users").document(user.uid).setData(userData, merge: true)
         }
     }
 
@@ -87,8 +108,10 @@ class AuthViewModel: ObservableObject {
             self.userName = nil
             self.userEmail = nil
             print("✅ Successfully signed out.")
+            self.checkIfSignedIn()
         } catch {
             print("❌ Error signing out: \(error.localizedDescription)")
+            self.checkIfSignedIn()
         }
     }
 }

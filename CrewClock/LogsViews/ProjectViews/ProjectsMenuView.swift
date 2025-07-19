@@ -9,8 +9,8 @@ import SwiftUI
 
 struct ProjectsMenuView: View {
     @Binding var selected: LogFB
-    @StateObject private var projectVM = ProjectViewModel()
-    @StateObject private var logsVM = LogsViewModel()
+    @EnvironmentObject var projectVM: ProjectViewModel
+    @EnvironmentObject var logsVM: LogsViewModel
 
     var projects: [ProjectFB] {
         projectVM.projects
@@ -37,9 +37,6 @@ struct ProjectsMenuView: View {
         }
         .onAppear {
             projectVM.fetchProjects()
-            print("projects:  -->  \(projects)")
-            print("projectVMprojects:  -->  \(projectVM.projects)")
-
         }
     }
     
@@ -82,19 +79,29 @@ struct ProjectsMenuView: View {
     }
     
     var backGround: some View {
-        RoundedRectangle(cornerRadius: 15)
+        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
             .fill(color())
-            .opacity(0.5)
+            .opacity(K.UI.opacity)
     }
     
     private func update(with project: ProjectFB) {
         print(project)
-        logsVM.updateLog(log: .init(logId: selected.documentID, projectName: project.name))
+        logsVM.updateLog(log: LogModel(
+            logId: selected.documentID,
+            projectName: project.name,
+            comment: selected.comment,
+            date: selected.date,
+            timeStarted: selected.timeStarted,
+            timeFinished: selected.timeFinished,
+            crewUID: selected.crewUID,
+            expenses: selected.expenses,
+            row: selected.row
+        ))
         logsVM.fetchLogs()
     }
     
     private func color() -> Color {
-        return selectedProject?.color != nil ? Color(selectedProject!.color) : Color.red
+        return ProjectColorHelper.color(for: selectedProject?.color)
     }
     
     private func name() -> String {

@@ -8,8 +8,152 @@
 import SwiftUI
 
 struct ClockTabView: View {
+    @EnvironmentObject private var projectsViewModel: ProjectViewModel
+    @EnvironmentObject private var userViewModel: UserViewModel
+    
+    @State private var showAddProject: Bool = false
+    @State var editingProject: ProjectFB?
+    
+    var activeProjects: [ProjectFB] {
+        projectsViewModel.projects.filter { $0.active }.sorted { $0.finishDate > $1.finishDate }
+    }
+    
+    var inactiveProjects: [ProjectFB] {
+        projectsViewModel.projects.filter { !$0.active }.sorted { $0.finishDate > $1.finishDate }
+    }
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                list
+                WorkingFooterView()
+            }
+            .frame(maxHeight: .infinity)
+            .navigationTitle("Clock")
+            .sheet(isPresented: $showAddProject) {
+                AddProjectView(showAddProjectSheet: $showAddProject)
+                    .tint(.indigo)
+            }
+        }
+    }
+    
+    private var list: some View {
+        List {
+            controlsSection
+            activeProjectsSection
+            inactiveProjectsSection
+        }
+    }
+    
+    private var controlsSection: some View {
+        Section {
+            tableButtons
+        } header: { Text("Project controls") }
+    }
+    
+    private var activeProjectsSection: some View {
+        Section {
+            if activeProjects.isEmpty {
+                Text("❌ No projects yet.")
+            }else {
+                activeProjectButtons
+                    .buttonStyle(.plain)
+                    .padding(.top, 15)
+            }
+        } header: { Text("Active projects") }
+    }
+    
+    private var inactiveProjectsSection: some View {
+        Section {
+            if inactiveProjects.isEmpty {
+                Text("❌ No Finished projects yet.")
+            }else {
+                inactiveProjectButtons
+                    .buttonStyle(.plain)
+                    .padding(.top, 15)
+            }
+        } header: { Text("Inactive projects") }
+    }
+    
+    @ViewBuilder
+    private var activeProjectButtons: some View {
+        // Create rows of two projects each
+        ForEach(Array(stride(from: 0, to: activeProjects.count, by: 2)), id: \.self) { index in
+            HStack(spacing: 15) {
+                // First item in the row
+                ProjectButtonView(editingProject: $editingProject, project: activeProjects[index])
+                
+                // Second item if exists;
+                if index + 1 < activeProjects.count {
+                    ProjectButtonView(editingProject: $editingProject, project: activeProjects[index + 1])
+                }
+            }
+            .listRowSeparator(.hidden, edges: .all)
+        }
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets())
+    }
+    
+    @ViewBuilder
+    private var inactiveProjectButtons: some View {
+        // Create rows of two projects each
+        ForEach(Array(stride(from: 0, to: inactiveProjects.count, by: 2)), id: \.self) { index in
+            HStack(spacing: 15) {
+                // First item in the row
+                ProjectButtonView(editingProject: $editingProject, project: inactiveProjects[index])
+                
+                // Second item if exists; otherwise a spacer
+                if index + 1 < inactiveProjects.count {
+                    ProjectButtonView(editingProject: $editingProject, project: inactiveProjects[index + 1])
+                }
+            }
+            .listRowSeparator(.hidden, edges: .all)
+        }
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets())
+    }
+    
+    private var tableButtons: some View {
+        HStack(spacing: 15) {
+            button("Add Project", "folder.badge.plus", Color.green) {
+                self.showAddProject.toggle()
+                print("Add Project tapped")
+            }
+            button("", "", Color.yellow) { }
+        }
+        .buttonStyle(.plain)
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets())
+    }
+    
+    @ViewBuilder
+    private func tableButtonLabel(_ text: String, _ image: String, _ color: Color) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: image)
+                    .padding(10)
+                    .background {
+                        Circle()
+                            .fill(color)
+                    }
+                Text(text)
+                    .font(.headline)
+            }
+            Spacer()
+        }
+    }
+    
+    @ViewBuilder
+    private func button(_ text: String, _ image: String, _ color: Color, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            tableButtonLabel(text, image, color)
+                .padding(10)
+                .frame(height: 100)
+                .background {
+                    RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+                        .fill(Color.listRow)
+                }
+        }
     }
 }
 

@@ -10,7 +10,7 @@ import GoogleSignIn
 
 struct LoggedInView: View {
     @EnvironmentObject var viewModel: AuthViewModel
-    @StateObject private var sheetViewModel = SpreadSheetViewModel()
+    @EnvironmentObject var sheetViewModel: SpreadSheetViewModel
 
     var body: some View {
         VStack(spacing: 20) {
