@@ -84,7 +84,7 @@ git clone https://github.com/Molanter/CrewClock.git
 
 ## ✨ Screenshots
 
-_Add screenshots here if you'd like to showcase your UI._
+<!--  screenshots here to showcase UI._ -->
 
 ---
 

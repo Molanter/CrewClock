@@ -37,7 +37,7 @@ struct ProjectButtonView: View {
                     .tint(.indigo)
             })
             .sheet(item: $projectToOpen) { project in
-                ProjectLookView(projectId: project.id)
+                ProjectLookView(projectSelf: project)
                     .tint(ProjectColorHelper.color(for: project.color))
             }
     }

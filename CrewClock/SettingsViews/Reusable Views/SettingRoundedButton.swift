@@ -15,11 +15,16 @@ struct SettingRoundedButton: View {
     var body: some View {
         VStack {
             if image {
-                Image(systemName: "")
+                Image(systemName: text1)
+                    .foregroundStyle(Color.red)
                 Text(text2)
+                    .font(.caption)
+                    .foregroundStyle(Color.red)
             }else {
-                Text(text1)
                 Text(text2)
+                Text(text1)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(10)

@@ -34,6 +34,8 @@ struct ProjectColorHelper {
             return Color.indigo
         case "brown":
             return Color.brown
+        case "pink":
+            return Color.pink
         default:
             return Color.red
         }

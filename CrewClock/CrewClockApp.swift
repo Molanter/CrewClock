@@ -27,6 +27,7 @@ struct CrewClockApp: App {
     @StateObject private var logsViewModel: LogsViewModel = .init()
     @StateObject private var projectViewModel: ProjectViewModel = .init()
     @StateObject private var userViewModel: UserViewModel = .init()
+    @StateObject private var searchUserViewModel: SearchUserViewModel = .init()
     @StateObject private var publishedVariables: PublishedVariebles = .init()
 
 
@@ -40,6 +41,7 @@ struct CrewClockApp: App {
                 .environmentObject(projectViewModel)
                 .environmentObject(userViewModel)
                 .environmentObject(publishedVariables)
+                .environmentObject(searchUserViewModel)
         }
     }
 }

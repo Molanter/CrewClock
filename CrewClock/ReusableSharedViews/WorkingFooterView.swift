@@ -38,11 +38,20 @@ struct WorkingFooterView: View {
     
     private var newProject: some View {
         HStack {
+            Spacer()
             Button{
                 self.showAddProject.toggle()
             }label: {
-                Text("Create first project")
+                Label("Create first project", systemImage: "folder.badge.plus")
+                    .padding(K.UI.padding)
+                    .background {
+                        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+                            .fill(.indigo)
+                    }
+                    .padding(K.UI.padding)
+                
             }
+            .buttonStyle(.plain)
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -88,7 +97,11 @@ struct WorkingFooterView: View {
                 Text("Working on: ")
                     .font(.callout)
                     .bold()
-                ProjectSelectorView(text: $project)
+                ProjectSelectorView(text: $userViewModel.currentProjectName)
+            }
+            .onChange(of: userViewModel.currentProjectName) { old, newValue in
+                print("project changed for footer: \(newValue)")
+                userViewModel.updateUser(data: ["currentLog.projectName": newValue])
             }
         }
     }

@@ -19,7 +19,7 @@ struct ProjectLookView: View {
     @State var showAddProject: Bool = false
     
     @State private var project: ProjectFB?
-    let projectId: String
+    let projectSelf: ProjectFB
     
     var body: some View {
         NavigationStack {
@@ -35,8 +35,12 @@ struct ProjectLookView: View {
             fetchProject()
         }
         .onDisappear {
-            project = nil
-            fetchProject()
+            UINavigationBar.appearance().titleTextAttributes = [
+                .foregroundColor: UIColor(.white)
+            ]
+            UINavigationBar.appearance().largeTitleTextAttributes = [
+                .foregroundColor: UIColor(.white)
+            ]
         }
     }
     
@@ -45,6 +49,11 @@ struct ProjectLookView: View {
         list
             .toolbar {
                 toolbar
+            }
+            .onChange(of: showAddProject) { old, isPresented in
+                if !isPresented {
+                    fetchProject()
+                }
             }
     }
     
@@ -72,10 +81,7 @@ struct ProjectLookView: View {
                         Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
                     }
                     Text(item.text)
-                        .strikethrough(item.isChecked, color: .indigo)
-                        .onAppear {
-                            print("\(item.text) is : -- :", item.isChecked ? "true" : "false")
-                        }
+                        .strikethrough(item.isChecked, color: ProjectColorHelper.color(for: project?.color))
                 }
             }
             HStack {
@@ -91,6 +97,8 @@ struct ProjectLookView: View {
             }
         }header: {
             Text("Checklist")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
     
@@ -112,6 +120,8 @@ struct ProjectLookView: View {
             }
         }header: {
             Text("Crew")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
     
@@ -167,6 +177,8 @@ struct ProjectLookView: View {
             }
         }header: {
             Text("Info")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
    
@@ -251,7 +263,13 @@ struct ProjectLookView: View {
     }
     
     private func fetchProject() {
-        projectViewModel.fetchProject(by: projectId) { fetchedProject in
+        UINavigationBar.appearance().titleTextAttributes = [
+            .foregroundColor: UIColor(ProjectColorHelper.color(for: projectSelf.color))
+        ]
+        UINavigationBar.appearance().largeTitleTextAttributes = [
+            .foregroundColor: UIColor(ProjectColorHelper.color(for: projectSelf.color))
+        ]
+        projectViewModel.fetchProject(by: projectSelf.id) { fetchedProject in
             DispatchQueue.main.async {
                 self.project = fetchedProject
                 if let project = self.project {
@@ -259,12 +277,6 @@ struct ProjectLookView: View {
                     for uid in project.crew {
                         userViewModel.fetchUser(by: uid)
                     }
-                    UINavigationBar.appearance().titleTextAttributes = [
-                        .foregroundColor: UIColor(ProjectColorHelper.color(for: project.color))
-                    ]
-                    UINavigationBar.appearance().largeTitleTextAttributes = [
-                        .foregroundColor: UIColor(ProjectColorHelper.color(for: project.color))
-                    ]
                 }
             }
         }
@@ -320,7 +332,7 @@ struct ProjectLookView: View {
         ],
         documentId: "sampleID"
     )
-    ProjectLookView(projectId: "sampleID")
+    ProjectLookView(projectSelf: sampleProject)
         .environmentObject(UserViewModel())
         .environmentObject(ProjectViewModel())
 }

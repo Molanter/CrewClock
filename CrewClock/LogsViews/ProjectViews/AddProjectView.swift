@@ -16,11 +16,12 @@ struct AddProjectView: View {
     var editingProject: ProjectFB?
 
     let user = Auth.auth().currentUser!
-    private let colorsStringArray: [String] = ["blue", "yellow", "orange", "cyan", "red", "green", "mint", "purple", "indigo", "brown"]
+    private let colorsStringArray: [String] = ["blue", "yellow", "orange", "cyan", "red", "green", "mint", "purple", "pink", "indigo", "brown"]
     
     @State private var project: ProjectModel
     @State private var showError = false
     @State private var newChecklistItem: String = ""
+    @State private var crewSearch: String = ""
     
     init(showAddProjectSheet: Binding<Bool>, editingProject: ProjectFB? = nil) {
         self._showAddProjectSheet = showAddProjectSheet
@@ -122,7 +123,7 @@ struct AddProjectView: View {
     private var crewSection: some View {
         Section(header: Text("Crew")) {
             Text(project.owner.capitalized)
-            //                    TextField("Crew (comma-separated)", text: $project.crew)
+//            TextField("Search to add crew", text: $crewSearch)
             
         }
     }

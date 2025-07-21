@@ -8,22 +8,24 @@
 import SwiftUI
 
 struct LogsTabView: View {
-    @State private var searchText = ""
+    @Environment(\.isSearching) private var isSearching
+    @EnvironmentObject var logsViewModel: LogsViewModel
+    @EnvironmentObject var publishedVars: PublishedVariebles
+
     @State var showAddLogSheet = false
     @State var showAddProjectSheet = false
     
-    @EnvironmentObject var logsViewModel: LogsViewModel
 
     private var filteredLogs: [LogFB] {
-        if searchText.isEmpty {
+        if publishedVars.searchLog.isEmpty {
             return logsViewModel.logs
                 .sorted { $0.date > $1.date }
         }else {
             return logsViewModel.logs
                 .sorted { $0.date > $1.date }
                 .filter {
-                $0.projectName.localizedCaseInsensitiveContains(searchText) ||
-                $0.comment.localizedCaseInsensitiveContains(searchText)
+                    $0.projectName.localizedCaseInsensitiveContains(publishedVars.searchLog) ||
+                    $0.comment.localizedCaseInsensitiveContains(publishedVars.searchLog)
             }
         }
     }
@@ -50,11 +52,14 @@ struct LogsTabView: View {
     private var switchView: some View {
         ZStack {
             if logsViewModel.logs.isEmpty {
-                Text("❌ No logs available.")
+                NoLogsView(contentType: .noLogs)
             } else {
                 view
                     .navigationTitle("Logs")
             }
+        }
+        .onChange(of: isSearching) { oldValue, newValue in
+            print("isSearching -- ", isSearching ? "true" : "false")
         }
     }
     
@@ -62,21 +67,26 @@ struct LogsTabView: View {
     var view: some View {
         ZStack(alignment: .bottom) {
                 list
-                footer
+            if !isSearching {
+                    footer
+                }
             }
             .frame(maxHeight: .infinity)
     }
     
     @ViewBuilder
     private var list: some View {
-        List(filteredLogs) { log in
-            LogRowView(selectedProject: .constant(log), log: log)
+        if filteredLogs.isEmpty {
+            NoLogsView(contentType: .noResults)
+        } else {
+            List(filteredLogs) { log in
+                LogRowView(selectedProject: .constant(log), log: log)
+            }
+            .refreshable {
+                logsViewModel.fetchLogs()
+            }
+            .padding(.bottom, 50)
         }
-        .refreshable {
-            logsViewModel.fetchLogs()
-        }
-        .searchable(text: $searchText, placement: .navigationBarDrawer, prompt: "Search logs")
-        .padding(.bottom, 50)
     }
     
     private var footer: some View {

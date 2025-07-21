@@ -12,6 +12,8 @@ import FirebaseAuth
 class UserViewModel: ObservableObject {
     @Published var user: UserFB?
     @Published var users: [String: UserFB] = [:]
+    @Published var currentProjectName: String = ""
+
 
     private var db = Firestore.firestore()
 
@@ -39,6 +41,10 @@ class UserViewModel: ObservableObject {
     }
 
     func clockIn(log: LogModel) {
+        self.user?.currentLog = log
+        self.user?.working = true
+        self.currentProjectName = log.projectName
+        
         guard let uid = Auth.auth().currentUser?.uid else { return }
         let logData: [String: Any] = [
             "logId": log.logId,

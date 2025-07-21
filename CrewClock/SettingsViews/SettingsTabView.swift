@@ -10,7 +10,8 @@ import FirebaseAuth
 
 struct SettingsTabView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
-    
+    @EnvironmentObject private var authViewModel: AuthViewModel
+
     private let user = Auth.auth().currentUser
     
     var body: some View {
@@ -83,7 +84,12 @@ struct SettingsTabView: View {
             if let connections = userViewModel.user?.connections.count {
                 SettingRoundedButton(image: false, text1: "Connections", text2: connections.description)
             }
-                SettingRoundedButton(image: true, text1: "rectangle.portrait.and.arrow.right", text2: "Sign Out")
+            Button {
+                authViewModel.signOut()
+            } label: {
+                    SettingRoundedButton(image: true, text1: "rectangle.portrait.and.arrow.forward", text2: "Sign Out")
+            }
+            .buttonStyle(.plain)
         }
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)

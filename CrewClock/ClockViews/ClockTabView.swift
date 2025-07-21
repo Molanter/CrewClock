@@ -10,6 +10,7 @@ import SwiftUI
 struct ClockTabView: View {
     @EnvironmentObject private var projectsViewModel: ProjectViewModel
     @EnvironmentObject private var userViewModel: UserViewModel
+    @Environment(\.isSearching) private var isSearching
     
     @State private var showAddProject: Bool = false
     @State var editingProject: ProjectFB?
@@ -24,16 +25,26 @@ struct ClockTabView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                list
-                WorkingFooterView()
+            Group {
+                if isSearching {
+                    ClockSearchView()
+                } else {
+                    clock
+                }
             }
-            .frame(maxHeight: .infinity)
             .navigationTitle("Clock")
-            .sheet(isPresented: $showAddProject) {
-                AddProjectView(showAddProjectSheet: $showAddProject)
-                    .tint(.indigo)
-            }
+        }
+    }
+    
+    var clock: some View {
+        ZStack(alignment: .bottom) {
+            list
+            WorkingFooterView()
+        }
+        .frame(maxHeight: .infinity)
+        .sheet(isPresented: $showAddProject) {
+            AddProjectView(showAddProjectSheet: $showAddProject)
+                .tint(.indigo)
         }
     }
     
@@ -54,7 +65,8 @@ struct ClockTabView: View {
     private var activeProjectsSection: some View {
         Section {
             if activeProjects.isEmpty {
-                Text("❌ No projects yet.")
+                NoProjectsView(contentType: .noActiveProjects)
+                    .listRowBackground(Color.clear)
             }else {
                 activeProjectButtons
                     .buttonStyle(.plain)
@@ -66,7 +78,8 @@ struct ClockTabView: View {
     private var inactiveProjectsSection: some View {
         Section {
             if inactiveProjects.isEmpty {
-                Text("❌ No Finished projects yet.")
+                NoProjectsView(contentType: .noFinishedProjects)
+                    .listRowBackground(Color.clear)
             }else {
                 inactiveProjectButtons
                     .buttonStyle(.plain)
