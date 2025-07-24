@@ -7,6 +7,13 @@ yarn-error.log*
 firebase-debug.log*
 firebase-debug.*.log*
 
+
+node_modules/
+*.local
+service-account.json
+Auth Key K2B9R9U927.p8
+
+
 # Firebase cache
 .firebase/
 
