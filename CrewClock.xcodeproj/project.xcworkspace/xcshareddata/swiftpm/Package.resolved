@@ -1,5 +1,5 @@
 {
-  "originHash" : "46869bf0f065fd48995272e5ce5a1ae84638ba36e8495cedabd2f2223c5893b5",
+  "originHash" : "5144a4018942e2f81f9c734dff48a13d7ec265c3d75d9e670878889bf430277d",
   "pins" : [
     {
       "identity" : "abseil-cpp-binary",
@@ -125,6 +125,15 @@
       "state" : {
         "revision" : "b7e1104502eca3a213b46303391ca4d3bc8ddec1",
         "version" : "2.30910.0"
+      }
+    },
+    {
+      "identity" : "popovers",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/aheze/Popovers",
+      "state" : {
+        "revision" : "de44c4dd7271ec6413fe350f7efadb14e5e18dce",
+        "version" : "1.3.2"
       }
     },
     {

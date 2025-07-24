@@ -122,7 +122,7 @@ struct AddProjectView: View {
     
     private var crewSection: some View {
         Section(header: Text("Crew")) {
-            Text(project.owner.capitalized)
+            UserRowView(uid: project.owner)
 //            TextField("Search to add crew", text: $crewSearch)
             
         }

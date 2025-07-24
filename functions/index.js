@@ -232,3 +232,77 @@ exports.deleteSheetRow = onDocumentDeleted(
         return null;
     }
 );
+
+exports.sendPushNotification = onDocumentCreated(
+  {
+    region: "us-central1",
+    document: "notifications/{notificationId}"
+  },
+  async (event) => {
+    const snap = event.data;
+    const data = snap.data();
+
+    const recipients = data.recipients || data.recipientUID || [];
+    const title = data.title;
+    const body = data.body;
+    const imageUrl = data.imageUrl || "";
+    const link = data.link || "";
+    const badgeCount = data.badge || 1;
+
+    if (!Array.isArray(recipients) || recipients.length === 0 || !title || !body) {
+      console.error("❌ Missing required parameters in notification document");
+      return null;
+    }
+
+    const tokensToSend = [];
+
+    for (const uid of recipients) {
+      const tokensSnapshot = await admin.firestore()
+        .collection("users")
+        .doc(uid)
+        .collection("fcmTokens")
+        .get();
+
+      tokensSnapshot.forEach(doc => {
+        const token = doc.data().token;
+        if (token) {
+          tokensToSend.push(token);
+        }
+      });
+    }
+
+    const sendPromises = tokensToSend.map(token => {
+      const message = {
+        token: token,
+        notification: {
+          title: title,
+          body: body,
+          imageUrl: imageUrl
+        },
+        data: {
+          link: link,
+          sound: "default"
+        },
+        apns: {
+          payload: {
+            aps: {
+              badge: badgeCount,
+              sound: "default"
+            }
+          }
+        }
+      };
+
+      return admin.messaging().send(message);
+    });
+
+    try {
+      const responses = await Promise.all(sendPromises);
+      console.log("✅ Notifications sent:", responses);
+    } catch (error) {
+      console.error("❌ Error sending one or more notifications:", error);
+    }
+
+    return null;
+  }
+);

@@ -97,8 +97,8 @@ struct ProjectLookView: View {
             }
         }header: {
             Text("Checklist")
-                .font(.caption)
-                .foregroundColor(.secondary)
+//                .font(.caption)
+//                .foregroundColor(.secondary)
         }
     }
     
@@ -120,8 +120,8 @@ struct ProjectLookView: View {
             }
         }header: {
             Text("Crew")
-                .font(.caption)
-                .foregroundColor(.secondary)
+//                .font(.caption)
+//                .foregroundColor(.secondary)
         }
     }
     
@@ -177,8 +177,8 @@ struct ProjectLookView: View {
             }
         }header: {
             Text("Info")
-                .font(.caption)
-                .foregroundColor(.secondary)
+//                .font(.caption)
+//                .foregroundColor(.secondary)
         }
     }
    

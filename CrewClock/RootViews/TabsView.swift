@@ -11,12 +11,38 @@ struct TabsView: View {
     @EnvironmentObject var publishedVars: PublishedVariebles
     @EnvironmentObject var searchUserViewModel: SearchUserViewModel
 
+    @State private var activeTab: TabItem = .clock
+    @State private var showSearchBar: Bool = false
+    
     init() {
         let tabBarAppearance = UITabBar.appearance()
         tabBarAppearance.backgroundColor = UIColor.systemGray6
     }
     
     var body: some View {
+        
+//        ZStack(alignment: .bottom) {
+//            Rectangle().fill(.red).frame(width: 100, height: 50)
+//            if showSearchBar {
+//                ClockSearchView()
+//            }else {
+//                switch activeTab {
+//                case .logs:
+//                    LogsTabView()
+//                case .clock:
+//                    ClockTabView()
+//                case .settings:
+//                    SettingsTabView()
+//                }
+//            }
+//            
+//            CustomTabBar(showsSearchBar: true, activeTab: $activeTab, searchText: $publishedVars.searchClock) { status in
+//                self.showSearchBar.toggle()
+//            } onSearchTextFieldActive: { status in
+//            }
+//            .padding(.bottom, 10)
+//        }
+        
         TabView(selection: $publishedVars.tabSelected) {
             log
 
@@ -62,4 +88,5 @@ struct TabsView: View {
 
 #Preview {
     TabsView()
+        .environmentObject(PublishedVariebles())
 }

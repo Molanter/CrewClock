@@ -29,7 +29,7 @@ struct K {
     }
 
     struct UI {
-        static var cornerRadius: CGFloat = 15
+        static var cornerRadius: CGFloat = 30
         static var padding: CGFloat = 8
         static var opacity = 0.3
     }

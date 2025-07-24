@@ -14,19 +14,21 @@ struct UserRowView: View {
     
     var uid: String
     
-    var user: UserFB? {
-        return userViewModel.getUser(uid)
-    }
-
     var body: some View {
-        HStack {
-            profileImage
-            VStack(alignment: .leading) {
-                Text(user?.name ?? "Loading...")
-                    .font(.headline)
-                Text(user?.email ?? "")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+        Group {
+            if let user = userViewModel.getUser(uid) {
+                HStack {
+                    profileImage(for: user)
+                    VStack(alignment: .leading) {
+                        Text(user.name)
+                            .font(.headline)
+                        Text(user.email)
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                    }
+                }
+            } else {
+                ProgressView("Loading...")
             }
         }
         .onAppear {
@@ -35,9 +37,9 @@ struct UserRowView: View {
     }
     
     @ViewBuilder
-    private var profileImage: some View {
-        if let urlString = user?.profileImage,
-           let url = URL(string: urlString) {
+    private func profileImage(for user: UserFB) -> some View {
+         let urlString = user.profileImage
+           if let url = URL(string: urlString) {
             AsyncImage(url: url) { image in
                 image
                     .resizable()
@@ -48,13 +50,13 @@ struct UserRowView: View {
             .frame(width: 40, height: 40)
             .clipShape(Circle())
         } else {
-            initialsCircle
+            initialsCircle(user)
         }
     }
     
-    private var initialsCircle: some View {
+    private func initialsCircle(_ user: UserFB) -> some View {
         let initials: String = {
-            let components = (user?.name ?? "").components(separatedBy: " ")
+            let components = (user.name).components(separatedBy: " ")
             let firstTwo = components.prefix(2)
             return firstTwo.compactMap { $0.first }.map { String($0).uppercased() }.joined()
         }()

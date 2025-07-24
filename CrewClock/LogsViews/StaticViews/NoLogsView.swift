@@ -63,7 +63,7 @@ struct NoLogsView: View {
                 .bold()
                 .padding(K.UI.padding * 2)
                 .background {
-                    RoundedRectangle(cornerRadius: K.UI.cornerRadius * 2)
+                    RoundedRectangle(cornerRadius: K.UI.cornerRadius)
                         .fill(.indigo)
                 }
                 .padding(.bottom)

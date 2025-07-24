@@ -9,6 +9,7 @@ import SwiftUI
 import GoogleSignIn
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseMessaging
 
 class AuthViewModel: ObservableObject {
     @Published var isSignedIn = false
@@ -81,7 +82,16 @@ class AuthViewModel: ObservableObject {
                     print("🟢 Access token for Google APIs: \(accessToken)")
                     self?.checkIfSignedIn()
                     
-                    
+                    Messaging.messaging().token { token, error in
+                        if let error = error {
+                            print("Error fetching FCM registration token: \(error)")
+                        } else if let token = token {
+                            print("FCM registration token: \(token)")
+                            // You can now store or update the token in Firestore
+                            NotificationsViewModel().updateFcmToken(token: token)
+                            app.fcmToken = token  // store in @AppStorage
+                        }
+                    }
                 }
             }
         }
@@ -104,6 +114,10 @@ class AuthViewModel: ObservableObject {
         do {
             try Auth.auth().signOut()
             GIDSignIn.sharedInstance.signOut()
+            let notificationsVM = NotificationsViewModel()
+            if let token = app.fcmToken {
+                notificationsVM.deleteFcmToken(token: token)
+            }
             self.isSignedIn = false
             self.userName = nil
             self.userEmail = nil
