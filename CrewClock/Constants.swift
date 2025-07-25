@@ -41,7 +41,7 @@ struct K {
             "face_in_steam" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-327.gif?alt=media&token=aeb8e45e-c33e-4839-85dd-fd501318d6e6",
             "human_footsteps" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-336.gif?alt=media&token=ef477044-982e-489c-87be-c8c622202742",
             "cat_fotsteps" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-341.gif?alt=media&token=5c63b2e2-b1fb-43e3-9949-cb02fe5132e5",
-            "no_eyes_monkey" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-362.gif?alt=media&token=b387a1e6-5a9b-4fa6-9498-bc12d90a147e",
+            "no_eyes_monkey" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-21.gif?alt=media&token=b2d687dc-30ea-4448-b28c-e43abf83147f",
             "spiderweb" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-369.gif?alt=media&token=4a3a5eb5-1e40-41bc-9ea1-dc4139017dfc",
             "big_eyes" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-384.gif?alt=media&token=dcf7984d-b857-4854-b304-b880e9ef052f"
         ]

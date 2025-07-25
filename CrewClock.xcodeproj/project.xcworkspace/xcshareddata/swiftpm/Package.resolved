@@ -1,5 +1,5 @@
 {
-  "originHash" : "5144a4018942e2f81f9c734dff48a13d7ec265c3d75d9e670878889bf430277d",
+  "originHash" : "39f0319820bbe95feeb09b01c444db4d62febee4c9435857b805bf382574f095",
   "pins" : [
     {
       "identity" : "abseil-cpp-binary",
@@ -116,6 +116,15 @@
       "state" : {
         "revision" : "a0bc79961d7be727d258d33d5a6b2f1023270ba1",
         "version" : "1.22.5"
+      }
+    },
+    {
+      "identity" : "loremswiftum",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/lukaskubanek/LoremSwiftum.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "4b26c1d946f8fbb76c2a8d4e701ba099cab7b79d"
       }
     },
     {
