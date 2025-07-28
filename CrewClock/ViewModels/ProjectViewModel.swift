@@ -129,4 +129,33 @@ class ProjectViewModel: ObservableObject {
             }
         }
     }
+    
+    func addCrewMember(documentId: String, crewMember: String) {
+        let ref = db.collection("projects").document(documentId)
+        ref.updateData([
+            "crew": FieldValue.arrayUnion([crewMember])
+        ]) { error in
+            if let error = error {
+                print("❌ Error adding crew member: \(error.localizedDescription)")
+            } else {
+                print("✅ Crew member added successfully")
+                self.fetchProjects()
+            }
+        }
+    }
+
+    func removeCrewMember(documentId: String, crewMember: String) {
+        let ref = db.collection("projects").document(documentId)
+        ref.updateData([
+            "crew": FieldValue.arrayRemove([crewMember])
+        ]) { error in
+            if let error = error {
+                print("❌ Error removing crew member: \(error.localizedDescription)")
+            } else {
+                print("✅ Crew member removed successfully")
+                self.fetchProjects()
+            }
+        }
+    }
+    
 }

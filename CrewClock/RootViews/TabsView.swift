@@ -21,35 +21,48 @@ struct TabsView: View {
     
     var body: some View {
         
-//        ZStack(alignment: .bottom) {
-//            Rectangle().fill(.red).frame(width: 100, height: 50)
-//            if showSearchBar {
-//                ClockSearchView()
-//            }else {
-//                switch activeTab {
-//                case .logs:
-//                    LogsTabView()
-//                case .clock:
-//                    ClockTabView()
-//                case .settings:
-//                    SettingsTabView()
-//                }
-//            }
-//            
-//            CustomTabBar(showsSearchBar: true, activeTab: $activeTab, searchText: $publishedVars.searchClock) { status in
-//                self.showSearchBar.toggle()
-//            } onSearchTextFieldActive: { status in
-//            }
-//            .padding(.bottom, 10)
-//        }
-        
-        TabView(selection: $publishedVars.tabSelected) {
-            log
-
-            clock
-
-            settings
+        ZStack(alignment: .bottom) {
+            Group {
+                if showSearchBar {
+                    ClockSearchView()
+                }else {
+                    switch activeTab {
+                    case .logs:
+                        LogsTabView()
+                            .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")
+                    case .clock:
+                        ClockTabView()
+                            .searchable(text: $publishedVars.searchClock, placement: .navigationBarDrawer, prompt: "Search People")
+                            .onChange(of: publishedVars.searchClock) { oldValue, newValue in
+                                searchUserViewModel.searchUsers(with: newValue)
+                                print("searchUserViewModel.foundUIDs: -- ", searchUserViewModel.foundUIDs)
+                            }
+                    case .settings:
+                        SettingsTabView()
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            VStack {
+                if activeTab == .logs || activeTab == .clock {
+                    WorkingFooterView()
+                        .padding(.horizontal, K.UI.padding*2)
+                }
+                CustomTabBar(showsSearchBar: true, activeTab: $activeTab, searchText: $publishedVars.searchClock) { status in
+                    self.showSearchBar.toggle()
+                } onSearchTextFieldActive: { status in
+                }
+                .padding(.bottom, 10)
+            }
         }
+        
+//        TabView(selection: $publishedVars.tabSelected) {
+//            log
+//
+//            clock
+//
+//            settings
+//        }
     }
     
     private var log: some View {
@@ -59,7 +72,6 @@ struct TabsView: View {
                 Label("Logs", systemImage: "list.bullet.below.rectangle")
             }
             .tag(0)
-            .navigationTitle("Logs")
     }
     
     private var clock: some View {
@@ -81,7 +93,6 @@ struct TabsView: View {
                 Label("Settings", systemImage: "gearshape")
             }
             .tag(2)
-            .navigationTitle("Settings")
     }
 }
 

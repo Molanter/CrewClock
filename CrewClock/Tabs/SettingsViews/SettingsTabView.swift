@@ -30,7 +30,7 @@ struct SettingsTabView: View {
                 }
 
                 Section(header: Text("Notifications")) {
-                    NavigationLink("Notification Settings", destination: Text("Notification Settings View"))
+                    NavigationLink("Notification Settings", destination: NotificationView())
                 }
 
                 Section(header: Text("Appearance")) {
@@ -57,6 +57,11 @@ struct SettingsTabView: View {
                 Section(header: Text("Advanced")) {
                     NavigationLink("Re-authenticate Google", destination: Text("Re-auth View"))
                     NavigationLink("Reset App Settings", destination: Text("Reset Settings View"))
+                }
+                Section {
+                    Spacer()
+                        .frame(height: 50)
+                        .listRowBackground(Color.clear)
                 }
             }
             .navigationTitle("Settings")
@@ -96,20 +101,7 @@ struct SettingsTabView: View {
     }
     
     private func profilePicture(_ user: User) -> some View {
-        AsyncImage(url: user.photoURL) { phase in
-                switch phase {
-                case .empty:
-                    ProgressView() // While loading
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFit()
-                case .failure:
-                    Image(systemName: "person.crop.circle.dashed")
-                @unknown default:
-                    EmptyView()
-                }
-            }
+        UserProfileImage(user.photoURL?.absoluteString ?? "")
             .aspectRatio(contentMode: .fit)
             .frame(width: 50)
             .cornerRadius(.infinity)

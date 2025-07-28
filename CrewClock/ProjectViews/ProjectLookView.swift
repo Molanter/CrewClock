@@ -249,13 +249,7 @@ struct ProjectLookView: View {
                     .padding(K.UI.padding)
                     .background { background }
             } else {
-               AsyncImage(url: URL(string: profileImage)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                } placeholder: {
-                    ProgressView()
-                }
+                UserProfileImage(profileImage)
                 .frame(width: 40)
                 .cornerRadius(K.UI.cornerRadius - 8)
             }

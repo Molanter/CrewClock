@@ -85,14 +85,14 @@ struct WorkingFooterView: View {
             Spacer()
             controllButtonImage("stop.circle", {clockOut()})
         }
-        .padding(15)
+        .padding(.horizontal, K.UI.padding)
     }
     
     private var workingText: some View {
-        VStack(alignment: .leading) {
-            Text("Today's time: ") + Text("\(formatTime()) Clocked In")
-                .bold()
-                .font(.callout)
+//        VStack(alignment: .leading) {
+//            Text("Today's time: ") + Text("\(formatTime()) Clocked In")
+//                .bold()
+//                .font(.caption)
             HStack(alignment: .center) {
                 Text("Working on: ")
                     .font(.callout)
@@ -103,7 +103,7 @@ struct WorkingFooterView: View {
                 print("project changed for footer: \(newValue)")
                 userViewModel.updateUser(data: ["currentLog.projectName": newValue])
             }
-        }
+//        }
     }
     
     private var clockInFooter: some View {
@@ -112,14 +112,14 @@ struct WorkingFooterView: View {
             Spacer()
             controllButtonImage("play.circle", {clockIn()})
         }
-        .padding(15)
+        .padding(.horizontal, K.UI.padding)
     }
     
     private var clockInText: some View {
-        VStack(alignment: .leading) {
+        HStack(alignment: .center) {
             HStack {
                 Text("Clock In")
-                    .font(.headline)
+                    .font(.caption)
                     .bold()
                 if !errorMessage.isEmpty {
                     errorMessageLabel
@@ -131,14 +131,14 @@ struct WorkingFooterView: View {
     
     private var errorMessageLabel: some View {
         Text(errorMessage)
-            .font(.body)
+            .font(.caption)
             .foregroundStyle(.red)
     }
     
     private var backround: some View {
-        Rectangle()
+        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
             .fill(Color.listRow)
-            .cornerRadius(K.UI.cornerRadius, corners: [.topLeft, .topRight])
+//            .cornerRadius(K.UI.cornerRadius, corners: [.topLeft, .topRight])
     }
     
     private func formatTime() -> String {
@@ -161,7 +161,7 @@ struct WorkingFooterView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 35)
-                .padding(15)
+                .padding(K.UI.padding)
                 .background(Circle().fill(Color.accentColor).opacity(K.UI.opacity))
                 .foregroundStyle(Color.accentColor)
         }

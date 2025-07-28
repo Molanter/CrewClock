@@ -1,5 +1,5 @@
 //
-//  NoLogsView.swift
+//  NoContentView.swift
 //  CrewClock
 //
 //  Created by Edgars Yarmolatiy on 7/20/25.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct NoLogsView: View {
+struct NoContentView: View {
     @State var showAddLog = false
     
     var contentType: NoContentType = .noLogs
@@ -73,5 +73,5 @@ struct NoLogsView: View {
 }
 
 #Preview {
-    NoLogsView()
+    NoContentView()
 }

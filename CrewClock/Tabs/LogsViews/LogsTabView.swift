@@ -52,7 +52,7 @@ struct LogsTabView: View {
     private var switchView: some View {
         ZStack {
             if logsViewModel.logs.isEmpty {
-                NoLogsView(contentType: .noLogs)
+                NoContentView(contentType: .noLogs)
             } else {
                 view
                     .navigationTitle("Logs")
@@ -68,7 +68,7 @@ struct LogsTabView: View {
         ZStack(alignment: .bottom) {
                 list
             if !isSearching {
-                    footer
+//                    footer
                 }
             }
             .frame(maxHeight: .infinity)
@@ -77,15 +77,21 @@ struct LogsTabView: View {
     @ViewBuilder
     private var list: some View {
         if filteredLogs.isEmpty {
-            NoLogsView(contentType: .noResults)
+            NoContentView(contentType: .noResults)
         } else {
-            List(filteredLogs) { log in
-                LogRowView(selectedProject: .constant(log), log: log)
+            List {
+                ForEach(filteredLogs) { log in
+                    LogRowView(selectedProject: .constant(log), log: log)
+                }
+                Section {
+                    Spacer()
+                        .frame(height: 50)
+                        .listRowBackground(Color.clear)
+                }
             }
             .refreshable {
                 logsViewModel.fetchLogs()
             }
-            .padding(.bottom, 50)
         }
     }
     

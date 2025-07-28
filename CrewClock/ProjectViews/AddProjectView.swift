@@ -203,7 +203,7 @@ struct AddProjectView: View {
     }
     
     private func addProject() {
-        if project.projectName.isEmpty || project.owner.isEmpty || /*project.crew.isEmpty || project.checklist.isEmpty ||*/ project.comments.isEmpty || project.color.isEmpty {
+        if project.projectName.isEmpty || project.owner.isEmpty/* || project.crew.isEmpty || project.checklist.isEmpty || project.comments.isEmpty || project.color.isEmpty*/ {
             showError = true
         } else {
             project.checklist = project.checklist.map { ChecklistItem(text: $0.text, isChecked: false) }

@@ -31,6 +31,9 @@ enum TabItem: String, CaseIterable {
 }
 
 struct CustomTabBar: View {
+    @EnvironmentObject var publishedVars: PublishedVariebles
+    @EnvironmentObject var searchUserViewModel: SearchUserViewModel
+    
     var showsSearchBar: Bool = false
     @Binding var activeTab: TabItem
     @Binding var searchText: String
@@ -225,6 +228,10 @@ struct CustomTabBar: View {
                 if isSearchExpanded {
                     TextField("Search...", text: $searchText)
                         .focused($isKeyboardActive)
+                        .onChange(of: publishedVars.searchClock) { oldValue, newValue in
+                            searchUserViewModel.searchUsers(with: newValue)
+                            print("searchUserViewModel.foundUIDs: -- ", searchUserViewModel.foundUIDs)
+                        }
                 }
             }
             .padding(.horizontal, isSearchExpanded ? 15 : 0)

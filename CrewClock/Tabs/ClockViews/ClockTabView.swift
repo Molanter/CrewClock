@@ -39,7 +39,7 @@ struct ClockTabView: View {
     var clock: some View {
         ZStack(alignment: .bottom) {
             list
-            WorkingFooterView()
+//            WorkingFooterView()
         }
         .frame(maxHeight: .infinity)
         .sheet(isPresented: $showAddProject) {
@@ -53,6 +53,11 @@ struct ClockTabView: View {
             controlsSection
             activeProjectsSection
             inactiveProjectsSection
+            Section {
+                Spacer()
+                    .frame(height: 50)
+                    .listRowBackground(Color.clear)
+            }
         }
     }
     

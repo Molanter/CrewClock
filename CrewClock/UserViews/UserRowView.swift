@@ -40,13 +40,7 @@ struct UserRowView: View {
     private func profileImage(for user: UserFB) -> some View {
          let urlString = user.profileImage
            if let url = URL(string: urlString) {
-            AsyncImage(url: url) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                ProgressView()
-            }
+               UserProfileImage(url.absoluteString)
             .frame(width: 40, height: 40)
             .clipShape(Circle())
         } else {

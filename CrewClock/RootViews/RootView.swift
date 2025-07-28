@@ -11,6 +11,8 @@ struct RootView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var logViewModel: LogsViewModel
     @EnvironmentObject var projectViewModel: ProjectViewModel
+    @EnvironmentObject var userViewModel: UserViewModel
+    @EnvironmentObject private var notificationsViewModel: NotificationsViewModel
     
     var body: some View {
         if authViewModel.isSignedIn {
@@ -19,6 +21,8 @@ struct RootView: View {
                     authViewModel.setProfile()
                     logViewModel.fetchLogs()
                     projectViewModel.fetchProjects()
+                    notificationsViewModel.fetchNotifications(completion: { array in notificationsViewModel.notifications = array })
+                    userViewModel.fetchUser()
                 }
         } else {
             SignInView()

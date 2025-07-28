@@ -14,6 +14,7 @@ class NotificationsViewModel: ObservableObject {
     private var db = Firestore.firestore()
 
     @Published var tokensArray = [String]()
+    @Published var notifications: [NotificationFB] = []
     
     func updateFcmToken(token: String){
         guard let userId = auth.currentUser?.uid else{return}
@@ -187,5 +188,49 @@ class NotificationsViewModel: ObservableObject {
 //            }
 //        }.resume()
 //    }
+    
+    /// Fetch notifications where recipientUID contains the given uid
+    func fetchNotifications(completion: @escaping ([NotificationFB]) -> Void) {
+        guard let uid = auth.currentUser?.uid else {return}
+        
+        db.collection("notifications")
+            .whereField("recipientUID", arrayContains: uid)
+            .order(by: "timestamp", descending: true)
+            .getDocuments { (snapshot, error) in
+                if let error = error {
+                    print("Error fetching notifications: \(error.localizedDescription)")
+                    completion([])
+                    return
+                }
+                guard let documents = snapshot?.documents else {
+                    completion([])
+                    return
+                }
+                let notifications = documents.map { doc in
+                    NotificationFB(data: doc.data(), documentId: doc.documentID)
+                }
+                self.notifications = notifications
+                completion(notifications)
+                
+                print("✅ Notifications fetched succesfully :-:")
+            }
+    }
+    
+    /// Updates a notification's status by its notificationId
+    func updateNotificationStatus(notificationId: String, newStatus: NotificationStatus, completion: ((Bool) -> Void)? = nil) {
+        let ref = db.collection("notifications").document(notificationId)
+        ref.updateData(["status": newStatus.rawValue]) { [weak self] error in
+            if let error = error {
+                print("Error updating notification status: \(error.localizedDescription)")
+                completion?(false)
+            } else {
+                if let index = self?.notifications.firstIndex(where: { $0.notificationId == notificationId }) {
+                    self?.notifications[index].status = newStatus
+                }
+                print("Notification status updated successfully!")
+                completion?(true)
+            }
+        }
+    }
+    
 }
-

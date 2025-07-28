@@ -13,47 +13,48 @@ struct ClockSearchView: View {
     @EnvironmentObject var searchUserViewModel: SearchUserViewModel
     @EnvironmentObject var userViewModel: UserViewModel
     @EnvironmentObject var notificationsViewModel: NotificationsViewModel
-
+    @EnvironmentObject var publishedVars: PublishedVariebles
+    
     private var auth = Auth.auth()
     
-    @State private var searchText = ""
-    @State private var showNotification = false
-
+    @State private var notificationUID: String? = nil
+    @State private var sentInvites: Set<String> = []
+    
     var body: some View {
-        if !searchUserViewModel.foundUIDs.isEmpty {
+        if !publishedVars.searchClock.isEmpty, !publishedVars.searchClock.isEmpty{
             list
-            .popover(
-                present: $showNotification,
-                attributes: {
-                    $0.sourceFrameInset = .zero
-                    $0.position = .absolute(originAnchor: .top, popoverAnchor: .top)
-                    $0.presentation.animation = .spring()
-                    $0.presentation.transition = .move(edge: .top)
-                    $0.dismissal.mode = .tapOutside
-                    $0.dismissal.dragDismissalProximity = 80
-                },
-                view: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "person.2.badge.plus")
-                        Text("Invite to connect sent.")
-                            .font(.headline)
-                        Spacer()
-                    }
-                    .padding()
-                    .background(Color.listRow)
-                    .cornerRadius(12)
-                    .frame(maxWidth: .infinity)
-                }
-            )
-
+        }else if searchUserViewModel.foundUIDs.isEmpty, !publishedVars.searchClock.isEmpty {
+            VStack {
+                Spacer()
+                NoContentView(contentType: .noUsers)
+            }
+        }else {
+            VStack {
+                Spacer()
+                NoContentView(contentType: .search)
+                Spacer()
+            }
         }
     }
     
     private var list: some View {
         List(searchUserViewModel.foundUIDs, id: \.self) { uid in
-            HStack(alignment: .center) {
-                UserRowView(uid: uid)
-                Spacer()
+            row(uid)
+        }
+    }
+    
+    @ViewBuilder
+    private func row(_ uid: String) -> some View {
+        HStack(alignment: .center) {
+            UserRowView(uid: uid)
+            Spacer()
+            if userViewModel.user?.connections.contains(uid) == true {
+                Text("Connected")
+                    .foregroundStyle(.green)
+            } else if sentInvites.contains(uid) {
+                Text("Sent")
+                    .foregroundStyle(.gray)
+            } else {
                 Button {
                     self.connectWithPerson(uid)
                 } label: {
@@ -63,14 +64,43 @@ struct ClockSearchView: View {
                 .buttonStyle(.plain)
             }
         }
+//        .popover(
+//            present: .init(
+//                get: { notificationUID == uid },
+//                set: { newValue in
+//                    if !newValue { notificationUID = nil }
+//                }
+//            ),
+//            attributes: {
+//                $0.sourceFrameInset = .zero
+//                $0.position = .absolute(originAnchor: .top, popoverAnchor: .top)
+//                $0.presentation.animation = .spring()
+//                $0.presentation.transition = .move(edge: .top)
+//                $0.dismissal.mode = .tapOutside
+//                $0.dismissal.dragDismissalProximity = 80
+//            },
+//            view: {
+//                HStack(spacing: 12) {
+//                    Image(systemName: "person.2.badge.plus")
+//                    Text("Invite to connect sent.")
+//                        .font(.headline)
+//                    Spacer()
+//                }
+//                .padding()
+//                .background(Color.listRow)
+//                .cornerRadius(12)
+//                .frame(maxWidth: .infinity)
+//            }
+//        )
     }
     
     private func connectWithPerson(_ uid: String) {
-        self.showNotification.toggle() //show popover notification
-
+        sentInvites.insert(uid)
+        self.notificationUID = uid
+        
         let newNotification = NotificationModel(
             title: "Do you whant to connect?",
-            message: "**\(userViewModel.user?.name ?? auth.currentUser?.displayName ?? "Someone")** sent a connection invite. Respond to it in the app.",
+            message: "\(userViewModel.user?.name ?? auth.currentUser?.displayName ?? "Someone") sent a connection invite. Respond to it in the app.",
             timestamp: Date(),
             recipientUID: [uid],
             fromUID: userViewModel.user?.uid ?? auth.currentUser?.uid ?? "",
@@ -86,4 +116,3 @@ struct ClockSearchView: View {
 //#Preview {
 //    ClockSearchView()
 //}
-

@@ -101,32 +101,62 @@ class UserViewModel: ObservableObject {
 
     func addConnection(_ connection: String) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
-        db.collection("users").document(uid).updateData([
+
+        let userRef = db.collection("users").document(uid)
+        let connectionRef = db.collection("users").document(connection)
+
+        let batch = db.batch()
+
+        // Add connection to current user's connections array
+        batch.updateData([
             "connections": FieldValue.arrayUnion([connection])
-        ]) { error in
+        ], forDocument: userRef)
+
+        // Add current user to the other user's connections array
+        batch.updateData([
+            "connections": FieldValue.arrayUnion([uid])
+        ], forDocument: connectionRef)
+
+        batch.commit { error in
             if let error = error {
-                print("Error adding connection: \(error.localizedDescription)")
+                print("❌ Error adding mutual connections: \(error.localizedDescription)")
             } else {
-                print("✅ Connection added successfully")
+                print("✅ Mutual connection added successfully")
                 self.fetchUser()
             }
         }
     }
-
+    
+    
     func removeConnection(_ connection: String) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
-        db.collection("users").document(uid).updateData([
+
+        let userRef = db.collection("users").document(uid)
+        let connectionRef = db.collection("users").document(connection)
+
+        let batch = db.batch()
+
+        // Remove connection from current user's connections array
+        batch.updateData([
             "connections": FieldValue.arrayRemove([connection])
-        ]) { error in
+        ], forDocument: userRef)
+
+        // Remove current user from the other user's connections array
+        batch.updateData([
+            "connections": FieldValue.arrayRemove([uid])
+        ], forDocument: connectionRef)
+
+        batch.commit { error in
             if let error = error {
-                print("Error removing connection: \(error.localizedDescription)")
+                print("❌ Error removing mutual connections: \(error.localizedDescription)")
             } else {
-                print("✅ Connection removed successfully")
+                print("✅ Mutual connection removed successfully")
                 self.fetchUser()
             }
         }
     }
-
+    
+    
     func deleteUser() {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid).delete { error in
