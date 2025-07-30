@@ -67,10 +67,10 @@ struct LogsTabView: View {
     var view: some View {
         ZStack(alignment: .bottom) {
                 list
-            if publishedVars.tabSelected == 0 || publishedVars.tabSelected == 1 {
-                WorkingFooterView()
-                    .padding(.horizontal, K.UI.padding*2)
-            }
+//            if publishedVars.tabSelected == 0 || publishedVars.tabSelected == 1 {
+//                WorkingFooterView()
+//                    .padding(.horizontal, K.UI.padding*2)
+//            }
             }
             .frame(maxHeight: .infinity)
     }

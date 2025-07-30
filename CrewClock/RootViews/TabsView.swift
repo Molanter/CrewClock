@@ -21,12 +21,12 @@ struct TabsView: View {
     
     var body: some View {
         
-//        modernTabs
-        TabView(selection: $publishedVars.tabSelected) {
-            log
-            clock
-            settings
-        }
+        modernTabs
+//        TabView(selection: $publishedVars.tabSelected) {
+//            log
+//            clock
+//            settings
+//        }
     }
     
     //MARK: Different TabView Look (like iOS26)
@@ -54,7 +54,7 @@ struct TabsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             VStack {
-                if activeTab == .logs || activeTab == .clock {
+                if activeTab == .logs || activeTab == .clock, !showSearchBar {
                     WorkingFooterView()
                         .padding(.horizontal, K.UI.padding*2)
                 }

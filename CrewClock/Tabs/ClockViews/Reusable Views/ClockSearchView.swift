@@ -22,10 +22,10 @@ struct ClockSearchView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            if publishedVars.tabSelected == 0 || publishedVars.tabSelected == 1 {
-                WorkingFooterView()
-                    .padding(.horizontal, K.UI.padding*2)
-            }
+//            if publishedVars.tabSelected == 0 || publishedVars.tabSelected == 1 {
+//                WorkingFooterView()
+//                    .padding(.horizontal, K.UI.padding*2)
+//            }
             switchView
         }
     }

@@ -44,12 +44,13 @@ struct WorkingFooterView: View {
                 self.showAddProject.toggle()
             }label: {
                 Label("Create first project", systemImage: "folder.badge.plus")
-                    .padding(K.UI.padding)
-                    .background {
-                        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-                            .fill(K.Colors.accent)
-                    }
-                    .padding(K.UI.padding)
+                    .padding(K.UI.padding*2)
+                    .foregroundStyle(K.Colors.accent)
+//                    .background {
+//                        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+//                            .fill(K.Colors.accent)
+//                    }
+//                    .padding(K.UI.padding)
                 
             }
             .buttonStyle(.plain)

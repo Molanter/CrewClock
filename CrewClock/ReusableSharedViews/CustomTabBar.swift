@@ -256,7 +256,7 @@ struct CustomTabBar: View {
     }
     
     var accentColor: Color {
-        return .blue
+        return K.Colors.accent
     }
 }
 
