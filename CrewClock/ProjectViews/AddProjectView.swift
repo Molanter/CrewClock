@@ -10,9 +10,10 @@ import FirebaseAuth
 
 struct AddProjectView: View {
     @EnvironmentObject var projectViewModel: ProjectViewModel
+    @EnvironmentObject private var userViewModel: UserViewModel
+    @EnvironmentObject private var searchUserViewModel: SearchUserViewModel
     @Environment(\.dismiss) private var dismiss
 
-    @Binding var showAddProjectSheet: Bool
     var editingProject: ProjectFB?
 
     let user = Auth.auth().currentUser!
@@ -23,23 +24,35 @@ struct AddProjectView: View {
     @State private var newChecklistItem: String = ""
     @State private var crewSearch: String = ""
     
-    init(showAddProjectSheet: Binding<Bool>, editingProject: ProjectFB? = nil) {
-        self._showAddProjectSheet = showAddProjectSheet
+    init(editingProject: ProjectFB? = nil) {
         self.editingProject = editingProject
         let user = Auth.auth().currentUser
-        _project = State(initialValue: ProjectModel(
-            projectName: "",
-            owner: user?.displayName ?? "",
-            crew: [],
-            checklist: [],
-            comments: "",
-            color: "",
-            startDate: Date.now,
-            finishDate: Date.now,
-            active: true
-        ))
+        if let editing = editingProject {
+            _project = State(initialValue: ProjectModel(
+                projectName: editing.name,
+                owner: editing.owner,
+                crew: editing.crew,
+                checklist: editing.checklist,
+                comments: editing.comments,
+                color: editing.color,
+                startDate: editing.startDate,
+                finishDate: editing.finishDate,
+                active: editing.active
+            ))
+        } else {
+            _project = State(initialValue: ProjectModel(
+                projectName: "",
+                owner: user?.uid ?? "",
+                crew: [],
+                checklist: [],
+                comments: "",
+                color: "",
+                startDate: Date.now,
+                finishDate: Date.now,
+                active: true
+            ))
+        }
     }
-    
     var body: some View {
         NavigationView {
             form
@@ -108,6 +121,7 @@ struct AddProjectView: View {
         ForEach(project.checklist) { item in
             HStack {
                 Image(systemName: "minus.circle.fill")
+                    .symbolRenderingMode(.multicolor)
                     .foregroundColor(.red)
                     .onTapGesture {
                         removeChecklistItem(id: item.id)
@@ -123,11 +137,58 @@ struct AddProjectView: View {
     private var crewSection: some View {
         Section(header: Text("Crew")) {
             UserRowView(uid: project.owner)
-//            TextField("Search to add crew", text: $crewSearch)
+            if !project.crew.isEmpty {
+                crewList
+            }
+            TextField("Search to add crew", text: $crewSearch)
+                .onChange(of: crewSearch) { oldValue, newValue in
+                    searchUserViewModel.searchUsers(with: newValue)
+                }
             
+            if !crewSearch.isEmpty {
+                crewSearchingView
+            }
+        }
+    }
+    
+    private var crewSearchingView: some View {
+        let connections = userViewModel.user?.connections ?? []
+        let results = searchUserViewModel.foundUIDs.filter { connections.contains($0) && !project.crew.contains($0) }
+        return VStack(alignment: .leading) {
+            if results.isEmpty {
+                Text("No connections found.").foregroundColor(.secondary)
+            } else {
+                ForEach(results, id: \.self) { uid in
+                    HStack {
+                        UserRowView(uid: uid)
+                        Spacer()
+                        Button("Add") {
+                            self.crewSearch = ""
+                            project.crew.append(uid)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
         }
     }
         
+    private var crewList: some View {
+        ForEach(project.crew, id: \.self) { uid in
+            HStack {
+                Button(action: {
+                    removeUserFromCrew(uid)
+                }) {
+                    Image(systemName: "minus.circle.fill")
+                        .symbolRenderingMode(.multicolor)
+                        .foregroundColor(.red)
+                }
+
+                UserRowView(uid: uid)
+            }
+        }
+    }
+    
     private var detailsSection: some View {
         Section(header: Text("Details")) {
             colorPicker
@@ -141,17 +202,7 @@ struct AddProjectView: View {
     private var colorPicker: some View {
         Menu {
             ForEach(colorsStringArray, id: \.self) { colorName in
-                Button {
-                    project.color = colorName
-                } label: {
-                    HStack {
-                        Text(colorName.capitalized)
-                        Spacer()
-                        Circle()
-                            .fill(ProjectColorHelper.color(for: colorName))
-                            .frame(width: 20, height: 20)
-                    }
-                }
+                colorPickerButton(for: colorName)
             }
         } label: {
             menuLabel
@@ -181,11 +232,11 @@ struct AddProjectView: View {
         }
     }
     
+    ///Toolbar
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") {
-                showAddProjectSheet = false
                 dismiss()
             }
             .foregroundStyle(Color.accentColor)
@@ -202,6 +253,31 @@ struct AddProjectView: View {
         }
     }
     
+    
+    //MARK: Functions
+    ///ColorPicker Button
+    @ViewBuilder
+    private func colorPickerButton(for colorName: String) -> some View {
+        Button {
+            project.color = colorName
+        } label: {
+            colorPickerLabel(for: colorName)
+        }
+    }
+    
+    ///ColorPicker Button label
+    @ViewBuilder
+    private func colorPickerLabel(for colorName: String) -> some View {
+        HStack {
+            Text(colorName.capitalized)
+            Spacer()
+            Circle()
+                .fill(ProjectColorHelper.color(for: colorName))
+                .frame(width: 20, height: 20)
+        }
+    }
+    
+    ///Saves / Adds project to Firebase Firestore
     private func addProject() {
         if project.projectName.isEmpty || project.owner.isEmpty/* || project.crew.isEmpty || project.checklist.isEmpty || project.comments.isEmpty || project.color.isEmpty*/ {
             showError = true
@@ -212,35 +288,35 @@ struct AddProjectView: View {
                 project.owner = user?.uid ?? ""
             }
             showError = false
-            showAddProjectSheet = false
             projectViewModel.addProject(project)
             dismiss()
         }
     }
     
-    private func onAppearFunc() {
-        showAddProjectSheet = true
-        if let editingProject = editingProject {
-            project = ProjectModel(
-                projectName: editingProject.name,
-                owner: editingProject.owner,
-                crew: editingProject.crew,
-                checklist: editingProject.checklist,
-                comments: editingProject.comments,
-                color: editingProject.color,
-                startDate: editingProject.startDate,
-                finishDate: editingProject.finishDate,
-                active: editingProject.active
-            )
-        }
+    /// func that runs on Appear
+    private func onAppearFunc() {        
+        ///if editingProject exist, changes view to editing mode
+//        if let editingProject = editingProject {
+//            project = ProjectModel(
+//                projectName: editingProject.name,
+//                owner: editingProject.owner,
+//                crew: editingProject.crew,
+//                checklist: editingProject.checklist,
+//                comments: editingProject.comments,
+//                color: editingProject.color,
+//                startDate: editingProject.startDate,
+//                finishDate: editingProject.finishDate,
+//                active: editingProject.active
+//            )
+//        }
     }
     
+    ///Save updated project to Firebase Firestore
     private func updateProject() {
         if project.projectName.isEmpty || project.owner.isEmpty || project.comments.isEmpty || project.color.isEmpty {
             showError = true
         } else {
             showError = false
-            showAddProjectSheet = false
             if let editingProject = editingProject {
                 projectViewModel.updateProject(documentId: editingProject.documentId, with: project)
                 dismiss()
@@ -248,11 +324,13 @@ struct AddProjectView: View {
         }
     }
     
+    ///Remove checklist Item from project.checklist
     private func removeChecklistItem(id: UUID) {
         project.checklist.removeAll { $0.id == id }
         print(project.checklist)
     }
     
+    ///Add checklist Item to project.checlist
     private func addChecklistRow() {
         let trimmedItem = newChecklistItem.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedItem.isEmpty {
@@ -264,8 +342,18 @@ struct AddProjectView: View {
             print(project.checklist)
         }
     }
+    
+    ///Delete Crew's uid from project.crew array
+    private func removeUserFromCrew(_ uid: String) {
+        if let index = project.crew.firstIndex(of: uid) {
+            project.crew.remove(at: index)
+        }
+    }
 }
 
 #Preview {
-    AddProjectView(showAddProjectSheet: .constant(false))
+    AddProjectView()
+        .environmentObject(UserViewModel())
+        .environmentObject(SearchUserViewModel())
+        .environmentObject(ProjectViewModel())
 }

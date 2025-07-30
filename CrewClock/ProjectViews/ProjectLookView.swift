@@ -26,8 +26,8 @@ struct ProjectLookView: View {
                 projectView
             .navigationTitle(project?.name ?? "Project")
             .sheet(item: $editingProject, content: { project in
-                AddProjectView(showAddProjectSheet: $showAddProject, editingProject: project)
-                    .tint(.indigo)
+                AddProjectView(editingProject: project)
+                    .tint(K.Colors.accent)
             })
 
         }

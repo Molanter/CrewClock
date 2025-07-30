@@ -10,7 +10,7 @@ import SwiftUI
 struct TabsView: View {
     @EnvironmentObject var publishedVars: PublishedVariebles
     @EnvironmentObject var searchUserViewModel: SearchUserViewModel
-
+    
     @State private var activeTab: TabItem = .clock
     @State private var showSearchBar: Bool = false
     
@@ -21,6 +21,16 @@ struct TabsView: View {
     
     var body: some View {
         
+//        modernTabs
+        TabView(selection: $publishedVars.tabSelected) {
+            log
+            clock
+            settings
+        }
+    }
+    
+    //MARK: Different TabView Look (like iOS26)
+    private var modernTabs: some View {
         ZStack(alignment: .bottom) {
             Group {
                 if showSearchBar {
@@ -55,16 +65,10 @@ struct TabsView: View {
                 .padding(.bottom, 10)
             }
         }
-        
-//        TabView(selection: $publishedVars.tabSelected) {
-//            log
-//
-//            clock
-//
-//            settings
-//        }
     }
     
+    
+    //MARK: Tab Items
     private var log: some View {
         LogsTabView()
             .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")

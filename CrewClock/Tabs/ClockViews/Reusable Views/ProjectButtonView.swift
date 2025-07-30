@@ -11,7 +11,7 @@ struct ProjectButtonView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
     @EnvironmentObject private var projectsViewModel: ProjectViewModel
     
-    @Binding var editingProject: ProjectFB?
+    @State private var editingProject: ProjectFB?
     
     @State var showAddProject: Bool = false
     @State private var showDeleteConfirmation: Bool = false
@@ -32,10 +32,10 @@ struct ProjectButtonView: View {
                     projectToDelete = nil
                 }
             }
-            .sheet(item: $editingProject, content: { project in
-                AddProjectView(showAddProjectSheet: $showAddProject, editingProject: project)
-                    .tint(.indigo)
-            })
+            .sheet(item: $editingProject) { project in
+                AddProjectView(editingProject: project)
+                    .tint(K.Colors.accent)
+            }
             .sheet(item: $projectToOpen) { project in
                 ProjectLookView(projectSelf: project)
                     .tint(ProjectColorHelper.color(for: project.color))

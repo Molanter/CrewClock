@@ -34,6 +34,7 @@ struct WorkingFooterView: View {
         .onAppear {
             onAppear()
         }
+        .padding(.bottom, K.UI.padding)
     }
     
     private var newProject: some View {
@@ -46,7 +47,7 @@ struct WorkingFooterView: View {
                     .padding(K.UI.padding)
                     .background {
                         RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-                            .fill(.indigo)
+                            .fill(K.Colors.accent)
                     }
                     .padding(K.UI.padding)
                 
@@ -59,7 +60,7 @@ struct WorkingFooterView: View {
             backround
         }
         .sheet(isPresented: $showAddProject) {
-            AddProjectView(showAddProjectSheet: $showAddProject)
+            AddProjectView()
         }
 
     }
@@ -85,7 +86,7 @@ struct WorkingFooterView: View {
             Spacer()
             controllButtonImage("stop.circle", {clockOut()})
         }
-        .padding(.horizontal, K.UI.padding)
+        .padding(K.UI.padding)
     }
     
     private var workingText: some View {
@@ -112,14 +113,14 @@ struct WorkingFooterView: View {
             Spacer()
             controllButtonImage("play.circle", {clockIn()})
         }
-        .padding(.horizontal, K.UI.padding)
+        .padding(K.UI.padding)
     }
     
     private var clockInText: some View {
         HStack(alignment: .center) {
             HStack {
                 Text("Clock In")
-                    .font(.caption)
+                    .font(.callout)
                     .bold()
                 if !errorMessage.isEmpty {
                     errorMessageLabel
@@ -131,7 +132,7 @@ struct WorkingFooterView: View {
     
     private var errorMessageLabel: some View {
         Text(errorMessage)
-            .font(.caption)
+            .font(.callout)
             .foregroundStyle(.red)
     }
     
@@ -161,8 +162,8 @@ struct WorkingFooterView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 35)
-                .padding(K.UI.padding)
-                .background(Circle().fill(Color.accentColor).opacity(K.UI.opacity))
+//                .padding(K.UI.padding)
+//                .background(Circle().fill(Color.accentColor).opacity(K.UI.opacity))
                 .foregroundStyle(Color.accentColor)
         }
     }

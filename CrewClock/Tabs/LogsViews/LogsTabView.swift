@@ -36,11 +36,11 @@ struct LogsTabView: View {
             .toolbar { toolbarContent }
             .sheet(isPresented: $showAddLogSheet) {
                 AddLogView(showAddLogSheet: $showAddLogSheet)
-                    .tint(.indigo)
+                    .tint(K.Colors.accent)
             }
             .sheet(isPresented: $showAddProjectSheet) {
-                AddProjectView(showAddProjectSheet: $showAddProjectSheet)
-                    .tint(.indigo)
+                AddProjectView()
+                    .tint(K.Colors.accent)
             }
             .onAppear(perform: {
                 logsViewModel.fetchLogs()
@@ -67,9 +67,10 @@ struct LogsTabView: View {
     var view: some View {
         ZStack(alignment: .bottom) {
                 list
-            if !isSearching {
-//                    footer
-                }
+            if publishedVars.tabSelected == 0 || publishedVars.tabSelected == 1 {
+                WorkingFooterView()
+                    .padding(.horizontal, K.UI.padding*2)
+            }
             }
             .frame(maxHeight: .infinity)
     }

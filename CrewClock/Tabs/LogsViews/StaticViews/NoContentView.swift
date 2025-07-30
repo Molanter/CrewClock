@@ -16,7 +16,7 @@ struct NoContentView: View {
         page
             .sheet(isPresented: $showAddLog) {
                 AddLogView(showAddLogSheet: $showAddLog)
-                    .tint(.indigo)
+                    .tint(K.Colors.accent)
             }
     }
     
@@ -64,7 +64,7 @@ struct NoContentView: View {
                 .padding(K.UI.padding * 2)
                 .background {
                     RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-                        .fill(.indigo)
+                        .fill(K.Colors.accent)
                 }
                 .padding(.bottom)
         }

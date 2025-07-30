@@ -242,12 +242,20 @@ exports.sendPushNotification = onDocumentCreated(
     const snap = event.data;
     const data = snap.data();
 
-    const recipients = data.recipients || data.recipientUID || [];
     const title = data.title;
-    const body = data.body;
+    const body = data.body || data.message;
     const imageUrl = data.imageUrl || "";
     const link = data.link || "";
     const badgeCount = data.badge || 1;
+
+    let recipients = [];
+    if (Array.isArray(data.recipients)) {
+      recipients = data.recipients;
+    } else if (Array.isArray(data.recipientUID)) {
+      recipients = data.recipientUID;
+    } else if (typeof data.recipientUID === "string") {
+      recipients = [data.recipientUID];
+    }
 
     if (!Array.isArray(recipients) || recipients.length === 0 || !title || !body) {
       console.error("❌ Missing required parameters in notification document");
@@ -264,7 +272,7 @@ exports.sendPushNotification = onDocumentCreated(
         .get();
 
       tokensSnapshot.forEach(doc => {
-        const token = doc.data().token;
+        const token = doc.id;
         if (token) {
           tokensToSend.push(token);
         }
@@ -272,13 +280,16 @@ exports.sendPushNotification = onDocumentCreated(
     }
 
     const sendPromises = tokensToSend.map(token => {
+      const notificationPayload = {
+        title: title,
+        body: body
+      };
+      if (imageUrl && typeof imageUrl === "string" && imageUrl.startsWith("http")) {
+        notificationPayload.imageUrl = imageUrl;
+      }
       const message = {
         token: token,
-        notification: {
-          title: title,
-          body: body,
-          imageUrl: imageUrl
-        },
+        notification: notificationPayload,
         data: {
           link: link,
           sound: "default"

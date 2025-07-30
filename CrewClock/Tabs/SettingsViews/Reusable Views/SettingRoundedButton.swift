@@ -16,10 +16,9 @@ struct SettingRoundedButton: View {
         VStack {
             if image {
                 Image(systemName: text1)
-                    .foregroundStyle(Color.red)
                 Text(text2)
                     .font(.caption)
-                    .foregroundStyle(Color.red)
+                    .foregroundStyle(.secondary)
             }else {
                 Text(text2)
                 Text(text1)

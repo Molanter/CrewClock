@@ -1,5 +1,5 @@
 //
-//  NotificationView.swift
+//  NotificationsView.swift
 //  CrewClock
 //
 //  Created by Edgars Yarmolatiy on 7/25/25.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct NotificationView: View {
+struct NotificationsView: View {
     @EnvironmentObject private var notificationsViewModel: NotificationsViewModel
     
     var notifications: [NotificationFB] {
@@ -64,7 +64,7 @@ struct NotificationView: View {
 }
 
 #Preview {
-    NotificationView()
+    NotificationsView()
 }
 
 

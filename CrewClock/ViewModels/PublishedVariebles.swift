@@ -9,10 +9,14 @@
 import SwiftUI
 
 class PublishedVariebles: ObservableObject {
+    
+    
+    //MARK: Search Variables
     @Published var searchLog = ""
     @Published var searchClock = ""
+    @Published var userSearch = ""
 
-    @Published var tabSelected = 0
+    @Published var tabSelected = 1
     
     //MARK: Variables
 //    func getUser(_ uid: String) -> UserFB? {

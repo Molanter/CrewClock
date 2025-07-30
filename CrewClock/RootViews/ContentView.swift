@@ -11,7 +11,7 @@ struct ContentView: View {
     
     var body: some View {
         RootView()
-            .accentColor(Color.indigo)
+            .accentColor(K.Colors.accent)
             
     }
 }

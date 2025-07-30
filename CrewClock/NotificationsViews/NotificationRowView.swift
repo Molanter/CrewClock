@@ -89,7 +89,7 @@ struct NotificationRowView: View {
                     .frame(maxWidth: .infinity)
                     .background {
                         RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-                            .fill(Color.indigo)
+                            .fill(K.Colors.accent)
                     }
             }
             .buttonStyle(.plain)
@@ -105,36 +105,40 @@ struct NotificationRowView: View {
     }
     
     private func mainAction(_ type: NotificationType) {
-        switch type {
-        case .connectInvite:
-            userViewModel.addConnection(notification.fromUID)
-            notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
-        case .projectInvite:
-            projectViewModel.addCrewMember(documentId: notification.relatedId, crewMember: notification.relatedId)
-            notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
-        case .taskAssigned:
-            return
-        case .commentMention:
-            return
-        case .scheduleUpdate:
-            return
+        if notification.status != .completed, notification.status != .cancelled {
+            switch type {
+            case .connectInvite:
+                userViewModel.addConnection(notification.fromUID)
+                notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
+            case .projectInvite:
+                projectViewModel.addCrewMember(documentId: notification.relatedId, crewMember: notification.relatedId)
+                notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
+            case .taskAssigned:
+                return
+            case .commentMention:
+                return
+            case .scheduleUpdate:
+                return
+            }
         }
     }
     
     private func secondAction(_ type: NotificationType) {
-        switch type {
-        case .connectInvite:
-            notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
-        case .projectInvite:
-            notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
-        case .taskAssigned:
-            notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
-        case .commentMention:
-            return
-        case .scheduleUpdate:
-            return
+        if notification.status != .completed, notification.status != .cancelled {
+            switch type {
+            case .connectInvite:
+                notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
+            case .projectInvite:
+                notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
+            case .taskAssigned:
+                notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
+            case .commentMention:
+                return
+            case .scheduleUpdate:
+                return
+            }
         }
-    }
+        }
 
 }
 

@@ -17,19 +17,17 @@ class NotificationsViewModel: ObservableObject {
     @Published var notifications: [NotificationFB] = []
     
     func updateFcmToken(token: String){
-        guard let userId = auth.currentUser?.uid else{return}
+        guard let userId = auth.currentUser?.uid else { return }
         let ref = db.collection("users").document(userId).collection("fcmTokens").document(token)
         
-        ref.setData(
-            ["token": token
-            ]){error in
-                if let error = error{
-                    print("Error while updating profile:  -\(error)")
-                }else{
-                    app.fcmToken = token
-                    print("token is updated!")
-                }
+        ref.setData([:]) { error in
+            if let error = error {
+                print("Error while updating FCM token: \(error)")
+            } else {
+                app.fcmToken = token
+                print("✅ FCM token updated!")
             }
+        }
     }
     
     func deleteFcmToken(token: String){
@@ -73,45 +71,114 @@ class NotificationsViewModel: ObservableObject {
                     message: notification.message,
                     timestamp: notification.timestamp,
                     recipientUID: [uid],
-                    fromUID: notification.fromUID, isRead: notification.isRead,
+                    fromUID: notification.fromUID,
+                    isRead: notification.isRead,
                     status: notification.status,
                     type: notification.type,
-                    relatedId: notification.relatedId
+                    relatedId: notification.relatedId,
+                    imageUrl: notification.imageUrl
                 )
-                self.sendNotification(updatedNotification, fcmArray: [token])
+                self.sendNotification(updatedNotification)
             }
     }
     
     
-    func sendNotification(_ notification: NotificationModel, fcmArray: [String]) {
-        let data: [String: Any] = [
-            "notificationId": notification.notificationId,
+    func sendNotification(_ notification: NotificationModel) {
+        for recipientUID in notification.recipientUID {
+            db.collection("users")
+                .document(recipientUID)
+                .collection("fcmTokens")
+                .getDocuments { [weak self] snapshot, error in
+                    guard let self = self else { return }
+
+                    if let error = error {
+                        print("Error fetching FCM tokens for \(recipientUID): \(error.localizedDescription)")
+                        return
+                    }
+
+                    guard let documents = snapshot?.documents, !documents.isEmpty else {
+                        print("❌ No FCM tokens found for user: \(recipientUID)")
+                        return
+                    }
+
+                    let tokens = documents.map { $0.documentID }
+
+                    for token in tokens {
+                        var notificationData: [String: Any] = [
+                            "notificationId": notification.notificationId,
+                            "title": notification.title,
+                            "message": notification.message,
+                            "timestamp": Timestamp(date: notification.timestamp),
+                            "recipientUID": [recipientUID],
+                            "isRead": notification.isRead,
+                            "status": notification.status.rawValue,
+                            "type": notification.type.rawValue,
+                            "relatedId": notification.relatedId,
+                            "fromUID": notification.fromUID
+                        ]
+                        
+                        // Only add imageUrl if it's a valid URL string starting with "http"
+                        if let imageUrl = notification.imageUrl, imageUrl.starts(with: "http") {
+                            notificationData["imageUrl"] = imageUrl
+                        }
+
+                        Firestore.firestore()
+                            .collection("notifications")
+                            .document("\(notification.notificationId)_\(recipientUID)")
+                            .setData(notificationData) { error in
+                                if let error = error {
+                                    print("❌ Error saving notification for \(recipientUID): \(error.localizedDescription)")
+                                } else {
+                                    print("✅ Notification saved to Firestore for \(recipientUID)")
+                                    self.sendNotificationViaFunction(notification)
+                                }
+                            }
+                    }
+                }
+        }
+    }
+    
+    private func sendNotificationViaFunction(_ notification: NotificationModel) {
+        guard let url = URL(string: "https://us-central1-curchnote.cloudfunctions.net/sendNotification") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = [
             "title": notification.title,
             "message": notification.message,
-            "timestamp": Timestamp(date: notification.timestamp),
-            "recipientUID": notification.recipientUID,
-            "isRead": notification.isRead,
-            "status": notification.status.rawValue,
+            "recipientUIDs": notification.recipientUID,
+            "fromUID": notification.fromUID,
             "type": notification.type.rawValue,
             "relatedId": notification.relatedId,
-            "fromUID": notification.fromUID
+            "notificationId": notification.notificationId
         ]
 
-        Firestore.firestore()
-            .collection("notifications")
-            .document(notification.notificationId)
-            .setData(data) { error in
-                if let error = error {
-                    print("❌ Error sending notification: \(error.localizedDescription)")
-                } else {
-                    print("✅ Notification sent to \(notification.recipientUID)")
-                }
-            }
+        // Only add imageUrl if it is a valid URL string
+        if let imageUrl = notification.imageUrl,
+            !imageUrl.isEmpty,
+            imageUrl is String,
+            imageUrl.starts(with: "http") {
+            body["imageUrl"] = imageUrl
+        }
 
-        // Send push notification via FCM
-//        for token in fcmArray {
-//            sendPushNotification(to: token, title: notification.title, body: notification.message)
-//        }
+        print("📦 Sending push payload:", body)
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        } catch {
+            print("❌ Failed to serialize notification payload: \(error)")
+            return
+        }
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("❌ Error calling push function: \(error.localizedDescription)")
+            } else {
+                print("✅ Push function called")
+            }
+        }.resume()
     }
     
 //    private func sendPushNotification(to token: String, title: String, body: String) {
@@ -152,35 +219,57 @@ class NotificationsViewModel: ObservableObject {
 //            print("❌ Error serializing JSON for push notification: \(error.localizedDescription)")
 //        }
 //    }
-    
+
+//    /// Triggers a push notification to a user by UID
+//    func triggerPushNotification(toUID uid: String, title: String, body: String) {
+//        db.collection("users")
+//            .document(uid)
+//            .getDocument { [weak self] snapshot, error in
+//                guard let self = self else { return }
+//
+//                if let error = error {
+//                    print("❌ Error fetching user document: \(error.localizedDescription)")
+//                    return
+//                }
+//
+//                guard let data = snapshot?.data(),
+//                      let token = data["token"] as? String, !token.isEmpty else {
+//                    print("❌ No FCM token found for user: \(uid)")
+//                    return
+//                }
+//
+//                self.sendPushNotification(to: token, title: title, body: body)
+//            }
+//    }
+//
 //    func sendNotification() {
 //        guard let url = URL(string: "https://us-central1-curchnote.cloudfunctions.net/updateBadgeCount") else {
 //            print("Invalid Cloud Function URL")
 //            return
 //        }
-//        
+//
 //        var request = URLRequest(url: url)
 //        request.httpMethod = "POST"
 //        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-//        
+//
 //        let body: [String: Any] = [
 //            "userId": auth.currentUser?.uid ?? "",
 //            "badgeCount": 5
 //        ]
-//        
+//
 //        do {
 //            request.httpBody = try JSONSerialization.data(withJSONObject: body)
 //        } catch {
 //            print("Error encoding JSON: \(error)")
 //            return
 //        }
-//        
+//
 //        URLSession.shared.dataTask(with: request) { data, response, error in
 //            if let error = error {
 //                print("Error sending notification: \(error)")
 //                return
 //            }
-//            
+//
 //            if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
 //                print("Notification sent successfully")
 //            } else {

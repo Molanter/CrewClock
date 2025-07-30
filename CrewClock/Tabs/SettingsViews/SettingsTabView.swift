@@ -11,6 +11,9 @@ import FirebaseAuth
 struct SettingsTabView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject var publishedVars: PublishedVariebles
+    @EnvironmentObject var notificationsViewModel: NotificationsViewModel
+
 
     private let user = Auth.auth().currentUser
     
@@ -19,7 +22,7 @@ struct SettingsTabView: View {
             List {
                 profileHeaderSection
 
-                connectionsSection
+                headerScroll
                 
                 Section(header: Text("Time Tracking")) {
                     NavigationLink("Preferences", destination: Text("Time Tracking Preferences View"))
@@ -30,7 +33,7 @@ struct SettingsTabView: View {
                 }
 
                 Section(header: Text("Notifications")) {
-                    NavigationLink("Notification Settings", destination: NotificationView())
+                    NavigationLink("Notification Settings", destination: NotificationsView())
                 }
 
                 Section(header: Text("Appearance")) {
@@ -68,6 +71,7 @@ struct SettingsTabView: View {
         }
     }
     
+    ///Header current user info and NavigationLink to profile View
     private var profileHeaderSection: some View {
         Section(header: Text("Account")) {
             if let user = user {
@@ -84,29 +88,84 @@ struct SettingsTabView: View {
         }
     }
     
-    private var connectionsSection: some View {
-        HStack(spacing: 15) {
-            if let connections = userViewModel.user?.connections.count {
-                SettingRoundedButton(image: false, text1: "Connections", text2: connections.description)
+    ///Header Scroll with buttons
+    private var headerScroll: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 15) {
+                connections
+                pushNotification
+                signOut
             }
-            Button {
-                authViewModel.signOut()
-            } label: {
-                    SettingRoundedButton(image: true, text1: "rectangle.portrait.and.arrow.forward", text2: "Sign Out")
-            }
-            .buttonStyle(.plain)
         }
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)
     }
     
+    //MARK: Header Scroll
+    ///Connections NavigationLink
+    private var connections: some View {
+        NavigationLink {
+            UserConnectionsView()
+//                    .searchable(text: $publishedVars.userSearch)
+        } label: {
+            if let connections = userViewModel.user?.connections.count {
+                SettingRoundedButton(image: false, text1: "Connections", text2: connections.description)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+    
+    ///Send push notification to this User
+    private var pushNotification: some View {
+        Button {
+            if let uid = userViewModel.user?.uid {
+                print("press worked")
+                self.sendPushTo(uid)
+            }
+        }label: {
+            SettingRoundedButton(image: true, text1: "bell.badge", text2: "Send Push")
+        }
+        .buttonStyle(.plain)
+    }
+    
+    ///Sign Out button
+    private var signOut: some View {
+        Button {
+            authViewModel.signOut()
+        } label: {
+                SettingRoundedButton(image: true, text1: "rectangle.portrait.and.arrow.forward", text2: "Sign Out")
+                .foregroundStyle(Color.red)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    
+    //MARK: Functions
+    ///returns circle profile picture
     private func profilePicture(_ user: User) -> some View {
         UserProfileImage(user.photoURL?.absoluteString ?? "")
             .aspectRatio(contentMode: .fit)
             .frame(width: 50)
             .cornerRadius(.infinity)
     }
+    
+    ///Sends Push
+    private func sendPushTo(_ uid: String) {
+        let newNotification = NotificationModel(
+            title: "Test Push Notification",
+            message: "Hi \(userViewModel.user?.name ?? user?.displayName ?? "Someone"), it is test of push notification!",
+            timestamp: Date(),
+            recipientUID: [uid],
+            fromUID: userViewModel.user?.uid ?? user?.uid ?? "",
+            isRead: false,
+            type: .connectInvite,
+            relatedId: uid
+        )
+        
+        notificationsViewModel.getFcmByUid(uid: uid, notification: newNotification)
+    }
 }
+
 //
 //#Preview {
 //    SettingsTabView()

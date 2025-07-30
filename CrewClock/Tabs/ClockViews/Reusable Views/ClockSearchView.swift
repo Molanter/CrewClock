@@ -21,18 +21,30 @@ struct ClockSearchView: View {
     @State private var sentInvites: Set<String> = []
     
     var body: some View {
-        if !publishedVars.searchClock.isEmpty, !publishedVars.searchClock.isEmpty{
-            list
-        }else if searchUserViewModel.foundUIDs.isEmpty, !publishedVars.searchClock.isEmpty {
-            VStack {
-                Spacer()
-                NoContentView(contentType: .noUsers)
+        ZStack(alignment: .bottom) {
+            if publishedVars.tabSelected == 0 || publishedVars.tabSelected == 1 {
+                WorkingFooterView()
+                    .padding(.horizontal, K.UI.padding*2)
             }
-        }else {
-            VStack {
-                Spacer()
-                NoContentView(contentType: .search)
-                Spacer()
+            switchView
+        }
+    }
+    
+    private var switchView: some View {
+        Group {
+            if !publishedVars.searchClock.isEmpty, !publishedVars.searchClock.isEmpty{
+                list
+            }else if searchUserViewModel.foundUIDs.isEmpty, !publishedVars.searchClock.isEmpty {
+                VStack {
+                    Spacer()
+                    NoContentView(contentType: .noUsers)
+                }
+            }else {
+                VStack {
+                    Spacer()
+                    NoContentView(contentType: .search)
+                    Spacer()
+                }
             }
         }
     }
@@ -59,7 +71,7 @@ struct ClockSearchView: View {
                     self.connectWithPerson(uid)
                 } label: {
                     Text("Connect")
-                        .foregroundStyle(.indigo)
+                        .foregroundStyle(K.Colors.accent)
                 }
                 .buttonStyle(.plain)
             }

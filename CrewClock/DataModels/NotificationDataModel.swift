@@ -22,8 +22,10 @@ struct NotificationModel: Identifiable {
     var status: NotificationStatus
     var type: NotificationType
     var relatedId: String
+    var imageUrl: String?
+    
 
-    init(notificationId: String = UUID().uuidString, title: String, message: String, timestamp: Date = Date(), recipientUID: [String], fromUID: String = "", isRead: Bool = false, status: NotificationStatus = .received, type: NotificationType, relatedId: String) {
+    init(notificationId: String = UUID().uuidString, title: String, message: String, timestamp: Date = Date(), recipientUID: [String], fromUID: String = "", isRead: Bool = false, status: NotificationStatus = .received, type: NotificationType, relatedId: String, imageUrl: String? = nil) {
         self.notificationId = notificationId
         self.title = title
         self.message = message
@@ -34,6 +36,7 @@ struct NotificationModel: Identifiable {
         self.status = status
         self.type = type
         self.relatedId = relatedId
+        self.imageUrl = imageUrl
     }
 }
 
@@ -49,6 +52,7 @@ struct NotificationFB: Identifiable {
     var status: NotificationStatus
     var type: NotificationType
     var relatedId: String
+    var imageUrl: String?
 
     init(data: [String: Any], documentId: String) {
         self.notificationId = documentId
@@ -67,6 +71,7 @@ struct NotificationFB: Identifiable {
         self.status = NotificationStatus(rawValue: data["status"] as? String ?? "") ?? .received
         self.type = NotificationType(rawValue: data["type"] as? String ?? "") ?? .connectInvite
         self.relatedId = data["relatedId"] as? String ?? ""
+        self.imageUrl = data["imageUrl"] as? String
     }
 }
 

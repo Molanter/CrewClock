@@ -13,7 +13,6 @@ struct ClockTabView: View {
     @Environment(\.isSearching) private var isSearching
     
     @State private var showAddProject: Bool = false
-    @State var editingProject: ProjectFB?
     
     var activeProjects: [ProjectFB] {
         projectsViewModel.projects.filter { $0.active }.sorted { $0.finishDate > $1.finishDate }
@@ -43,8 +42,8 @@ struct ClockTabView: View {
         }
         .frame(maxHeight: .infinity)
         .sheet(isPresented: $showAddProject) {
-            AddProjectView(showAddProjectSheet: $showAddProject)
-                .tint(.indigo)
+            AddProjectView()
+                .tint(K.Colors.accent)
         }
     }
     
@@ -99,11 +98,11 @@ struct ClockTabView: View {
         ForEach(Array(stride(from: 0, to: activeProjects.count, by: 2)), id: \.self) { index in
             HStack(spacing: 15) {
                 // First item in the row
-                ProjectButtonView(editingProject: $editingProject, project: activeProjects[index])
+                ProjectButtonView(project: activeProjects[index])
                 
                 // Second item if exists;
                 if index + 1 < activeProjects.count {
-                    ProjectButtonView(editingProject: $editingProject, project: activeProjects[index + 1])
+                    ProjectButtonView(project: activeProjects[index + 1])
                 }
             }
             .listRowSeparator(.hidden, edges: .all)
@@ -118,11 +117,11 @@ struct ClockTabView: View {
         ForEach(Array(stride(from: 0, to: inactiveProjects.count, by: 2)), id: \.self) { index in
             HStack(spacing: 15) {
                 // First item in the row
-                ProjectButtonView(editingProject: $editingProject, project: inactiveProjects[index])
+                ProjectButtonView(project: inactiveProjects[index])
                 
                 // Second item if exists; otherwise a spacer
                 if index + 1 < inactiveProjects.count {
-                    ProjectButtonView(editingProject: $editingProject, project: inactiveProjects[index + 1])
+                    ProjectButtonView(project: inactiveProjects[index + 1])
                 }
             }
             .listRowSeparator(.hidden, edges: .all)

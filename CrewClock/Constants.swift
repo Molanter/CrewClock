@@ -14,7 +14,7 @@ struct K {
     }
     
     struct Colors {
-        static var accent = Color.indigo
+        static var accent = Color.green
     }
 
     struct Fonts {
