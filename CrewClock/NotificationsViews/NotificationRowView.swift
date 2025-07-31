@@ -7,6 +7,7 @@
 
 import SwiftUI
 import LoremSwiftum
+import FirebaseAuth
 
 struct NotificationRowView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
@@ -14,6 +15,7 @@ struct NotificationRowView: View {
     @EnvironmentObject private var notificationViewModel: NotificationsViewModel
 
     let notification: NotificationFB
+    var auth = Auth.auth()
     
     private var formattedTimestamp: String {
         let formatter = DateFormatter()
@@ -108,8 +110,7 @@ struct NotificationRowView: View {
         if notification.status != .completed, notification.status != .cancelled {
             switch type {
             case .connectInvite:
-                userViewModel.addConnection(notification.fromUID)
-                notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
+                connectFunc()
             case .projectInvite:
                 projectViewModel.addCrewMember(documentId: notification.relatedId, crewMember: notification.relatedId)
                 notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
@@ -139,6 +140,23 @@ struct NotificationRowView: View {
             }
         }
         }
+    
+    private func connectFunc() {
+        userViewModel.addConnection(notification.fromUID)
+        notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
+        let newNotification = NotificationModel(
+            title: "You connected",
+            message: "\(userViewModel.user?.name ?? auth.currentUser?.displayName ?? "Someone") accepted your connection request.",
+            timestamp: Date(),
+            recipientUID: [notification.fromUID],
+            fromUID: userViewModel.user?.uid ?? auth.currentUser?.uid ?? "",
+            isRead: false,
+            type: .connectInvite,
+            relatedId: notification.fromUID
+        )
+        
+        notificationViewModel.getFcmByUid(uid: notification.fromUID, notification: newNotification)
+    }
 
 }
 

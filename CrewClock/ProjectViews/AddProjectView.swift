@@ -12,6 +12,7 @@ struct AddProjectView: View {
     @EnvironmentObject var projectViewModel: ProjectViewModel
     @EnvironmentObject private var userViewModel: UserViewModel
     @EnvironmentObject private var searchUserViewModel: SearchUserViewModel
+    @EnvironmentObject private var notificationsViewModel: NotificationsViewModel
     @Environment(\.dismiss) private var dismiss
 
     var editingProject: ProjectFB?
@@ -23,7 +24,8 @@ struct AddProjectView: View {
     @State private var showError = false
     @State private var newChecklistItem: String = ""
     @State private var crewSearch: String = ""
-    
+    @State private var originalCrew: [String] = []
+
     init(editingProject: ProjectFB? = nil) {
         self.editingProject = editingProject
         let user = Auth.auth().currentUser
@@ -289,12 +291,18 @@ struct AddProjectView: View {
             }
             showError = false
             projectViewModel.addProject(project)
+            notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
             dismiss()
         }
     }
     
     /// func that runs on Appear
-    private func onAppearFunc() {        
+    private func onAppearFunc() {
+        if let crew = editingProject?.crew {
+            originalCrew = crew
+        }else {
+            originalCrew = project.crew
+        }
         ///if editingProject exist, changes view to editing mode
 //        if let editingProject = editingProject {
 //            project = ProjectModel(
@@ -311,6 +319,24 @@ struct AddProjectView: View {
 //        }
     }
     
+    ///Check if crew changed and send invite notification if needed
+    private func notifyNewCrewConnectionsIfNeeded(originalCrew: [String]) {
+        let addedCrew = project.crew.filter { !originalCrew.contains($0) }
+        for uid in addedCrew {
+            let newNotification = NotificationModel(
+                title: "Invite to project",
+                message: "\(userViewModel.user?.name ?? Auth.auth().currentUser?.displayName ?? "Someone") invited you to their project.",
+                timestamp: Date(),
+                recipientUID: [uid],
+                fromUID: userViewModel.user?.uid ?? Auth.auth().currentUser?.uid ?? "",
+                isRead: false,
+                type: .connectInvite,
+                relatedId: editingProject?.documentId ?? ""
+            )
+            notificationsViewModel.getFcmByUid(uid: uid, notification: newNotification)
+        }
+    }
+
     ///Save updated project to Firebase Firestore
     private func updateProject() {
         if project.projectName.isEmpty || project.owner.isEmpty || project.comments.isEmpty || project.color.isEmpty {
@@ -319,6 +345,7 @@ struct AddProjectView: View {
             showError = false
             if let editingProject = editingProject {
                 projectViewModel.updateProject(documentId: editingProject.documentId, with: project)
+                notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
                 dismiss()
             }
         }

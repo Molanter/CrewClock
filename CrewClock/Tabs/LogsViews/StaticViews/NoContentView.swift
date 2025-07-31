@@ -22,15 +22,15 @@ struct NoContentView: View {
     
     private var page: some View {
         VStack {
-            if contentType == .noLogs {
-                Spacer()
-            }
+//            if contentType == .noLogs {
+//                Spacer()
+//            }
             gifPart
             textPart
-            if contentType == .noLogs {
-                Spacer()
-                button
-            }
+//            if contentType == .noLogs {
+//                Spacer()
+//                button
+//            }
         }
     }
     

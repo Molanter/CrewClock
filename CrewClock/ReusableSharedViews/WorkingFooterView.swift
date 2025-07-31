@@ -35,6 +35,7 @@ struct WorkingFooterView: View {
             onAppear()
         }
         .padding(.bottom, K.UI.padding)
+        .padding(.horizontal, 25)
     }
     
     private var newProject: some View {
@@ -138,8 +139,12 @@ struct WorkingFooterView: View {
     }
     
     private var backround: some View {
-        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-            .fill(Color.listRow)
+//        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+//            .fill(Color.listRow)
+        TransparentBlurView(removeAllFilters: false)
+            .blur(radius: 9, opaque: true)
+            .background(.white.opacity(0.05))
+            .cornerRadius(K.UI.cornerRadius)
 //            .cornerRadius(K.UI.cornerRadius, corners: [.topLeft, .topRight])
     }
     

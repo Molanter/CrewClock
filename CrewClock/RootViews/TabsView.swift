@@ -38,7 +38,8 @@ struct TabsView: View {
                 }else {
                     switch activeTab {
                     case .logs:
-                        LogsTabView()
+//                        LogsTabView()
+                        CalendarLogsView()
                             .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")
                     case .clock:
                         ClockTabView()

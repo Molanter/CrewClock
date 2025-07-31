@@ -130,16 +130,27 @@ class UserViewModel: ObservableObject {
     
     func removeConnection(_ connection: String) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
-
+        
         let userRef = db.collection("users").document(uid)
-
-        userRef.updateData([
+        let connectionRef = db.collection("users").document(connection)
+        
+        let batch = db.batch()
+        
+        // Remove connection from current user's connections array
+        batch.updateData([
             "connections": FieldValue.arrayRemove([connection])
-        ]) { error in
+        ], forDocument: userRef)
+        
+        // Remove current user from the other user's connections array
+        batch.updateData([
+            "connections": FieldValue.arrayRemove([uid])
+        ], forDocument: connectionRef)
+        
+        batch.commit { error in
             if let error = error {
-                print("❌ Error removing connection: \(error.localizedDescription)")
+                print("❌ Error removing mutual connections: \(error.localizedDescription)")
             } else {
-                print("✅ Connection removed successfully")
+                print("✅ Mutual connection removed successfully")
                 self.fetchUser()
             }
         }

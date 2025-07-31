@@ -17,28 +17,46 @@ class ProjectViewModel: ObservableObject {
         guard let userId = Auth.auth().currentUser?.uid else { return }
 
         let projectsRef = db.collection("projects")
-        projectsRef
-            .whereField("owner", isEqualTo: userId)
-            .getDocuments { [weak self] (querySnapshot, error) in
-                if let error = error {
-                    print("Error fetching projects: \(error.localizedDescription)")
-                } else if let documents = querySnapshot?.documents {
-                    var processedProjects: [ProjectFB] = []
+        let ownerQuery = projectsRef.whereField("owner", isEqualTo: userId)
+        let crewQuery = projectsRef.whereField("crew", arrayContains: userId)
 
-                    for document in documents {
-                        var data = document.data()
-                        let docId = document.documentID
-                        data["documentID"] = docId
-                        let projectModel = ProjectFB(data: data, documentId: docId)
-                        processedProjects.append(projectModel)
-                    }
+        let group = DispatchGroup()
+        var fetchedDocuments: [QueryDocumentSnapshot] = []
+        var documentIds: Set<String> = []
 
-                    self?.projects = processedProjects
-                } else {
-                    print("No documents found")
-                    self?.projects = []
+        // Fetch projects where user is owner
+        group.enter()
+        ownerQuery.getDocuments { (querySnapshot, error) in
+            if let docs = querySnapshot?.documents {
+                fetchedDocuments.append(contentsOf: docs)
+                for doc in docs { documentIds.insert(doc.documentID) }
+            }
+            group.leave()
+        }
+
+        // Fetch projects where user is in crew
+        group.enter()
+        crewQuery.getDocuments { (querySnapshot, error) in
+            if let docs = querySnapshot?.documents {
+                // Only add if not already in set (to dedupe)
+                for doc in docs where !documentIds.contains(doc.documentID) {
+                    fetchedDocuments.append(doc)
                 }
             }
+            group.leave()
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            var processedProjects: [ProjectFB] = []
+            for document in fetchedDocuments {
+                var data = document.data()
+                let docId = document.documentID
+                data["documentID"] = docId
+                let projectModel = ProjectFB(data: data, documentId: docId)
+                processedProjects.append(projectModel)
+            }
+            self?.projects = processedProjects
+        }
     }
 
     func addProject(_ project: ProjectModel) {
