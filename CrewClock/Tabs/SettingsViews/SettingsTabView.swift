@@ -78,7 +78,7 @@ struct SettingsTabView: View {
                 HStack(spacing: 10) {
                         profilePicture(user)
                     VStack(alignment: .leading) {
-                        Text(user.displayName!)
+                        Text(user.displayName ?? "Someone")
                         Text(user.email!)
                     }
                 }

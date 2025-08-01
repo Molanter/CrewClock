@@ -35,7 +35,7 @@ struct WorkingFooterView: View {
             onAppear()
         }
         .padding(.bottom, K.UI.padding)
-        .padding(.horizontal, 25)
+        .padding(.horizontal, 15)
     }
     
     private var newProject: some View {

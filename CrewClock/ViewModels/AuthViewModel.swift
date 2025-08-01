@@ -10,15 +10,20 @@ import GoogleSignIn
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseMessaging
+import AuthenticationServices
+import CryptoKit
 
-class AuthViewModel: ObservableObject {
+class AuthViewModel: NSObject, ObservableObject {
     @Published var isSignedIn = false
     @Published var userName: String?
     @Published var userEmail: String?
     @Published var userToken: String?
 
+    private var currentNonce: String?
+
     
-    init() {
+    override init() {
+        super.init()
         checkIfSignedIn()
     }
 
@@ -39,8 +44,8 @@ class AuthViewModel: ObservableObject {
             }
         }
     }
-    
-    //MARK: SignIn with Google
+    //MARK: Sign Ins
+    ///SignIn with Google
     func signInWithGoogle() {
         guard let rootVC = UIApplication.shared.connectedScenes
                 .compactMap({ $0 as? UIWindowScene })
@@ -97,6 +102,55 @@ class AuthViewModel: ObservableObject {
         }
     }
     
+    ///SignIn with Emai+Password
+    func signInWithEmail(email: String, password: String, completion: @escaping (Result<User, Error>) -> Void) {
+        Auth.auth().signIn(withEmail: email, password: password) { result, error in
+            if let user = result?.user {
+                completion(.success(user))
+                self.checkIfSignedIn()
+            } else if let error = error {
+                completion(.failure(error))
+            }
+        }
+    }
+    
+    ///SignIn with Apple
+    func handleAppleSignIn() {
+            let nonce = randomNonceString()
+            currentNonce = nonce
+
+            let request = ASAuthorizationAppleIDProvider().createRequest()
+            request.requestedScopes = [.fullName, .email]
+            request.nonce = sha256(nonce)
+
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            controller.performRequests()
+        }
+
+        private func sha256(_ input: String) -> String {
+            let inputData = Data(input.utf8)
+            let hashed = SHA256.hash(data: inputData)
+            return hashed.compactMap { String(format: "%02x", $0) }.joined()
+        }
+
+        private func randomNonceString(length: Int = 32) -> String {
+            let charset: Array<Character> = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+            var result = ""
+            var remainingLength = length
+
+            while remainingLength > 0 {
+                let random = UInt8.random(in: 0...255)
+                if random < charset.count {
+                    result.append(charset[Int(random)])
+                    remainingLength -= 1
+                }
+            }
+
+            return result
+        }
+    
     func setProfile() {
         if let user = Auth.auth().currentUser {
             let userData: [String: Any] = [
@@ -127,5 +181,42 @@ class AuthViewModel: ObservableObject {
             print("❌ Error signing out: \(error.localizedDescription)")
             self.checkIfSignedIn()
         }
+    }
+}
+
+
+extension AuthViewModel: ASAuthorizationControllerDelegate {
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
+            guard let nonce = currentNonce,
+                  let appleIDToken = appleIDCredential.identityToken,
+                  let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+                print("Error getting Apple token")
+                return
+            }
+
+            let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idTokenString, rawNonce: nonce)
+
+            Auth.auth().signIn(with: credential) { result, error in
+                if let error = error {
+                    print("Firebase Apple sign-in error: \(error.localizedDescription)")
+                } else {
+                    print("Signed in with Apple")
+                    self.checkIfSignedIn()
+                    // You can publish user data here if needed
+                }
+            }
+        }
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        print("Apple Sign-In failed: \(error.localizedDescription)")
+        self.checkIfSignedIn()
+    }
+}
+
+extension AuthViewModel: ASAuthorizationControllerPresentationContextProviding {
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        return UIApplication.shared.windows.first { $0.isKeyWindow }!
     }
 }
