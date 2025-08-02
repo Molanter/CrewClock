@@ -13,9 +13,6 @@ struct SettingsTabView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject var publishedVars: PublishedVariebles
     @EnvironmentObject var notificationsViewModel: NotificationsViewModel
-
-
-    private let user = Auth.auth().currentUser
     
     var body: some View {
         NavigationStack {
@@ -74,17 +71,18 @@ struct SettingsTabView: View {
     ///Header current user info and NavigationLink to profile View
     private var profileHeaderSection: some View {
         Section(header: Text("Account")) {
-            if let user = user {
+            if let user = userViewModel.user {
                 HStack(spacing: 10) {
-                        profilePicture(user)
+                    profilePicture(user)
                     VStack(alignment: .leading) {
-                        Text(user.displayName ?? "Someone")
-                        Text(user.email!)
+                        Text(userViewModel.user?.name ?? "Someone")
+                        Text(userViewModel.user?.email ?? "examle@gmail.com")
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .padding(.vertical)
+                NavigationLink("Profile Info", destination: UserRowView(uid: user.uid))
             }
-            NavigationLink("Profile Info", destination: UserRowView(uid: "v51yL1dwlQWFCAGfMWPuvpVUUXl1"))
         }
     }
     
@@ -142,8 +140,8 @@ struct SettingsTabView: View {
     
     //MARK: Functions
     ///returns circle profile picture
-    private func profilePicture(_ user: User) -> some View {
-        UserProfileImage(user.photoURL?.absoluteString ?? "")
+    private func profilePicture(_ user: UserFB) -> some View {
+        UserProfileImage(user.profileImage)
             .aspectRatio(contentMode: .fit)
             .frame(width: 50)
             .cornerRadius(.infinity)
@@ -151,6 +149,7 @@ struct SettingsTabView: View {
     
     ///Sends Push
     private func sendPushTo(_ uid: String) {
+        let user = Auth.auth().currentUser
         let newNotification = NotificationModel(
             title: "Test Push Notification",
             message: "Hi \(userViewModel.user?.name ?? user?.displayName ?? "Someone"), it is test of push notification!",

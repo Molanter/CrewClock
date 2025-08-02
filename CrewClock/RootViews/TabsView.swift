@@ -11,6 +11,8 @@ struct TabsView: View {
     @EnvironmentObject var publishedVars: PublishedVariebles
     @EnvironmentObject var searchUserViewModel: SearchUserViewModel
     
+    @Environment(\.isSearching) var isSearching
+    
     @State private var activeTab: TabItem = .clock
     @State private var showSearchBar: Bool = false
     
@@ -43,19 +45,14 @@ struct TabsView: View {
                             .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")
                     case .clock:
                         ClockTabView()
-                            .searchable(text: $publishedVars.searchClock, placement: .navigationBarDrawer, prompt: "Search People")
-                            .onChange(of: publishedVars.searchClock) { oldValue, newValue in
-                                searchUserViewModel.searchUsers(with: newValue)
-                                print("searchUserViewModel.foundUIDs: -- ", searchUserViewModel.foundUIDs)
-                            }
                     case .settings:
                         SettingsTabView()
                     }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            VStack {
-                if activeTab == .logs || activeTab == .clock, !showSearchBar {
+            VStack(spacing: -10) {
+                if activeTab == .logs || activeTab == .settings, !showSearchBar {
                     WorkingFooterView()
                         .padding(.horizontal, K.UI.padding*2)
                 }

@@ -23,9 +23,11 @@ struct AddProjectView: View {
     @State private var project: ProjectModel
     @State private var showError = false
     @State private var newChecklistItem: String = ""
+    @State private var errorMessage: String = ""
     @State private var crewSearch: String = ""
     @State private var originalCrew: [String] = []
 
+    //MARK: init
     init(editingProject: ProjectFB? = nil) {
         self.editingProject = editingProject
         let user = Auth.auth().currentUser
@@ -55,6 +57,7 @@ struct AddProjectView: View {
             ))
         }
     }
+    
     var body: some View {
         NavigationView {
             form
@@ -67,23 +70,19 @@ struct AddProjectView: View {
             }
         }
     }
-    
+    //MARK: Form var view
     private var form: some View {
         Form {
             infoSection
             crewSection
             detailsSection
             if showError {
-                Text("Please fill in all fields.")
+                Text(errorMessage)
                     .foregroundColor(.red)
             }
             
             Button(editingProject != nil ? "Update Project" : "Add Project") {
-                if editingProject != nil {
-                    updateProject()
-                } else {
-                    addProject()
-                }
+                savingConditions()
             }
             .foregroundStyle(Color.accentColor)
         }
@@ -91,13 +90,13 @@ struct AddProjectView: View {
     
     private var infoSection: some View {
         Section(header: Text("Project Info")) {
-            TextField("Project Name", text: $project.projectName)
-            TextField("Comments", text: $project.comments)
+            TextField("Project Name *", text: $project.projectName)
+            TextField("Project description *", text: $project.comments)
             checklist
         }
     }
     
-    @ViewBuilder
+    //MARK: Checklist
     private var checklist: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -153,9 +152,20 @@ struct AddProjectView: View {
         }
     }
     
+    //MARK: Crew searchfield
     private var crewSearchingView: some View {
-        let connections = userViewModel.user?.connections ?? []
-        let results = searchUserViewModel.foundUIDs.filter { connections.contains($0) && !project.crew.contains($0) }
+        // current user id
+        let me = userViewModel.user?.uid
+
+        // sets for fast membership checks
+        let connectionSet = Set(userViewModel.user?.connections ?? [])
+        let crewSet       = Set(project.crew)
+
+        // results: in my connections, not already in crew, and not me
+        let results = searchUserViewModel.foundUIDs.filter {
+            $0 != me && connectionSet.contains($0) && !crewSet.contains($0)
+        }
+
         return VStack(alignment: .leading) {
             if results.isEmpty {
                 Text("No connections found.").foregroundColor(.secondary)
@@ -165,7 +175,7 @@ struct AddProjectView: View {
                         UserRowView(uid: uid)
                         Spacer()
                         Button("Add") {
-                            self.crewSearch = ""
+                            crewSearch = ""
                             project.crew.append(uid)
                         }
                         .buttonStyle(.plain)
@@ -174,7 +184,7 @@ struct AddProjectView: View {
             }
         }
     }
-        
+    //MARK: Crew list
     private var crewList: some View {
         ForEach(project.crew, id: \.self) { uid in
             HStack {
@@ -191,16 +201,18 @@ struct AddProjectView: View {
         }
     }
     
+    //MARK: Dates
     private var detailsSection: some View {
         Section(header: Text("Details")) {
             colorPicker
                 .buttonStyle(.plain)
-            DatePicker("Start Date", selection: $project.startDate, displayedComponents: .date)
-            DatePicker("Finish Date", selection: $project.finishDate, displayedComponents: .date)
+            DatePicker("Start Date *", selection: $project.startDate, displayedComponents: .date)
+            DatePicker("Finish Date *", selection: $project.finishDate, displayedComponents: .date)
             Toggle("Active", isOn: $project.active)
         }
     }
     
+    //MARK: Color picker
     private var colorPicker: some View {
         Menu {
             ForEach(colorsStringArray, id: \.self) { colorName in
@@ -213,7 +225,7 @@ struct AddProjectView: View {
     
     private var menuLabel: some View {
         HStack {
-            Text("Color")
+            Text("Color *")
             Spacer()
             if project.color.isEmpty{
                 HStack {
@@ -245,11 +257,7 @@ struct AddProjectView: View {
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button(editingProject != nil ? "Update" : "Add") {
-                if editingProject != nil {
-                    updateProject()
-                } else {
-                    addProject()
-                }
+                savingConditions()
             }
             .foregroundStyle(Color.accentColor)
         }
@@ -279,21 +287,35 @@ struct AddProjectView: View {
         }
     }
     
+    private func savingConditions() {
+        if project.projectName.isEmpty || project.owner.isEmpty || project.comments.isEmpty || project.color.isEmpty {
+            showError = true
+            errorMessage = "Please fill all required fields."
+            
+        }else if isProjectNameUsed {
+            showError = true
+            errorMessage = "Project name already exists."
+        }else {
+            showError = false
+            errorMessage = ""
+            if editingProject != nil {
+                updateProject()
+            } else {
+                addProject()
+            }
+        }
+    }
+    
     ///Saves / Adds project to Firebase Firestore
     private func addProject() {
-        if project.projectName.isEmpty || project.owner.isEmpty/* || project.crew.isEmpty || project.checklist.isEmpty || project.comments.isEmpty || project.color.isEmpty*/ {
-            showError = true
-        } else {
-            project.checklist = project.checklist.map { ChecklistItem(text: $0.text, isChecked: false) }
-            let user = Auth.auth().currentUser
-            if project.owner == user?.displayName ?? "" {
-                project.owner = user?.uid ?? ""
-            }
-            showError = false
-            projectViewModel.addProject(project)
-            notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
-            dismiss()
+        project.checklist = project.checklist.map { ChecklistItem(text: $0.text, isChecked: false) }
+        let user = Auth.auth().currentUser
+        if project.owner == user?.displayName ?? "" {
+            project.owner = user?.uid ?? ""
         }
+        projectViewModel.addProject(project)
+        notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
+        dismiss()
     }
     
     /// func that runs on Appear
@@ -339,15 +361,10 @@ struct AddProjectView: View {
 
     ///Save updated project to Firebase Firestore
     private func updateProject() {
-        if project.projectName.isEmpty || project.owner.isEmpty || project.comments.isEmpty || project.color.isEmpty {
-            showError = true
-        } else {
-            showError = false
-            if let editingProject = editingProject {
-                projectViewModel.updateProject(documentId: editingProject.documentId, with: project)
-                notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
-                dismiss()
-            }
+        if let editingProject = editingProject {
+            projectViewModel.updateProject(documentId: editingProject.documentId, with: project)
+            notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
+            dismiss()
         }
     }
     
@@ -375,6 +392,14 @@ struct AddProjectView: View {
         if let index = project.crew.firstIndex(of: uid) {
             project.crew.remove(at: index)
         }
+    }
+    
+    ///check if project name is used
+    private var isProjectNameUsed: Bool {
+        let trimmedName = project.projectName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return false }
+        // If editing, ignore the current project's name
+        return projectViewModel.projects.contains(where: { $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame && $0.documentId != editingProject?.documentId })
     }
 }
 

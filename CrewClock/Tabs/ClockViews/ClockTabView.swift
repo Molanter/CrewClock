@@ -13,6 +13,7 @@ struct ClockTabView: View {
     @Environment(\.isSearching) private var isSearching
     
     @State private var showAddProject: Bool = false
+    @State private var showAddLog: Bool = false
     
     var activeProjects: [ProjectFB] {
         projectsViewModel.projects.filter { $0.active }.sorted { $0.finishDate > $1.finishDate }
@@ -43,6 +44,10 @@ struct ClockTabView: View {
         .frame(maxHeight: .infinity)
         .sheet(isPresented: $showAddProject) {
             AddProjectView()
+                .tint(K.Colors.accent)
+        }
+        .sheet(isPresented: $showAddLog) {
+            AddLogView(showAddLogSheet: $showAddLog)
                 .tint(K.Colors.accent)
         }
     }
@@ -136,7 +141,9 @@ struct ClockTabView: View {
                 self.showAddProject.toggle()
                 print("Add Project tapped")
             }
-            button("", "", Color.yellow) { }
+            button("Add Log", "plus", Color.yellow) {
+                self.showAddLog.toggle()
+            }
         }
         .buttonStyle(.plain)
         .listRowBackground(Color.clear)

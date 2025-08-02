@@ -62,7 +62,7 @@ struct ClockSearchView: View {
             Spacer()
             if userViewModel.user?.connections.contains(uid) == true {
                 Text("Connected")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.secondary)
             } else if sentInvites.contains(uid) {
                 Text("Sent")
                     .foregroundStyle(.gray)
@@ -76,34 +76,6 @@ struct ClockSearchView: View {
                 .buttonStyle(.plain)
             }
         }
-//        .popover(
-//            present: .init(
-//                get: { notificationUID == uid },
-//                set: { newValue in
-//                    if !newValue { notificationUID = nil }
-//                }
-//            ),
-//            attributes: {
-//                $0.sourceFrameInset = .zero
-//                $0.position = .absolute(originAnchor: .top, popoverAnchor: .top)
-//                $0.presentation.animation = .spring()
-//                $0.presentation.transition = .move(edge: .top)
-//                $0.dismissal.mode = .tapOutside
-//                $0.dismissal.dragDismissalProximity = 80
-//            },
-//            view: {
-//                HStack(spacing: 12) {
-//                    Image(systemName: "person.2.badge.plus")
-//                    Text("Invite to connect sent.")
-//                        .font(.headline)
-//                    Spacer()
-//                }
-//                .padding()
-//                .background(Color.listRow)
-//                .cornerRadius(12)
-//                .frame(maxWidth: .infinity)
-//            }
-//        )
     }
     
     private func connectWithPerson(_ uid: String) {

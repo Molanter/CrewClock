@@ -42,7 +42,7 @@ struct CalendarLogsView: View {
                                 VStack(spacing: 4) {
                                     Text(date.string("EEE"))
                                     Text(date.string("dd"))
-                                        .font(.largeTitle.weight(.thin))
+                                        .font(.largeTitle.weight(.bold))
                                 }
                                 .frame(width: 55, height: 70)
                                 .frame(maxWidth: .infinity, alignment: .leading)

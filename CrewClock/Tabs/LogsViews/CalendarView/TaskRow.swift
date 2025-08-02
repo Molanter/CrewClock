@@ -65,9 +65,11 @@ struct TaskRow: View {
                         Spacer()
                         ProjectsMenuView(selected: $selectedProject)
                     }
-                    Text(log.comment)
-                        .font(.body)
-                        .foregroundStyle(.primary)
+                    if !log.comment.isEmpty {
+                        Text(log.comment)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                    }
                     HStack {
                         Text(formattedDate(log.date))
                             .font(.footnote)
@@ -86,7 +88,7 @@ struct TaskRow: View {
         }
         .background {
             RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-                .fill(.background)
+                .fill(.listRow)
                 .shadow(color: .white.opacity(0.35), radius: 1)
         }
     }

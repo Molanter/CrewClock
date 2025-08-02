@@ -30,15 +30,15 @@ class NotificationsViewModel: ObservableObject {
         }
     }
     
-    func deleteFcmToken(token: String){
-        guard let userId = auth.currentUser?.uid else{return}
-        let ref = db.collection("users").document(userId).collection("fcmTokens").document(token)
-        
-        ref.delete() { err in
+    func deleteFcmToken(userId: String, token: String) {
+        let ref = db.collection("users").document(userId)
+            .collection("fcmTokens").document(token)
+
+        ref.delete { err in
             if let err = err {
-                print("Error removing document: \(err)")
+                print("Error removing FCM token: \(err)")
             } else {
-                print("Document successfully removed!")
+                print("✅ FCM token removed: \(token)")
             }
         }
     }

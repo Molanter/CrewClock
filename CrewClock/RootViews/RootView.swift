@@ -18,7 +18,6 @@ struct RootView: View {
         if authViewModel.isSignedIn {
             TabsView()
                 .onAppear {
-                    authViewModel.setProfile()
                     logViewModel.fetchLogs()
                     projectViewModel.fetchProjects()
                     notificationsViewModel.fetchNotifications(completion: { array in notificationsViewModel.notifications = array })
