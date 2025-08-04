@@ -142,8 +142,8 @@ struct SettingsTabView: View {
     ///returns circle profile picture
     private func profilePicture(_ user: UserFB) -> some View {
         UserProfileImage(user.profileImage)
-            .aspectRatio(contentMode: .fit)
-            .frame(width: 50)
+            .aspectRatio(contentMode: .fill)
+            .frame(width: 50, height: 50)
             .cornerRadius(.infinity)
     }
     

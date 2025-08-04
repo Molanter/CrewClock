@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct ProjectSelectorView: View {
+    @Binding var error: String?
     @Binding var text: String
     @EnvironmentObject var projectVM: ProjectViewModel
 
@@ -44,6 +45,7 @@ struct ProjectSelectorView: View {
             ForEach(activeProjects) { project in
                 Button {
                     text = project.name
+                    self.error = nil
                 } label: {
                     Text(project.name)
                 }
@@ -56,6 +58,7 @@ struct ProjectSelectorView: View {
             ForEach(inactiveProjects) { project in
                 Button {
                     text = project.name
+                    self.error = nil
                 } label: {
                     Text(project.name)
                 }
@@ -72,7 +75,7 @@ struct ProjectSelectorView: View {
                 .lineLimit(1)
             Image(systemName: "chevron.down")
         }
-        .foregroundStyle(projectColor())
+        .foregroundStyle(((error?.isEmpty) != nil) ? Color.red : projectColor())
         .padding(7)
         .background {
             background
@@ -86,7 +89,11 @@ struct ProjectSelectorView: View {
     }
 
     private func displayName() -> String {
-        return text.isEmpty ? "No project" : text
+        if let error, !error.isEmpty {
+            return error.capitalized
+        } else {
+            return text.isEmpty ? "No project" : text
+        }
     }
 
     private func projectColor() -> Color {
@@ -96,5 +103,5 @@ struct ProjectSelectorView: View {
 
 
 //#Preview {
-//    ProjectSelectorView()
+//    ProjectSelectorView(error: .constant(nil), text: .constant(""))
 //}

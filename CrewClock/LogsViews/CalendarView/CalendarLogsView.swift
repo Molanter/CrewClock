@@ -89,9 +89,21 @@ struct CalendarLogsView: View {
                 Calendar.current.isDate(log.date, inSameDayAs: date)
             }
             if filteredLogs.isEmpty {
-                if let log = logsViewModel.logs.first {
-                    TaskRow(log: log, isEmpty: true, selectedProject: .constant(log))
-                }
+                let dummyLog = LogFB(
+                    data: [
+                        "spreadsheetId": "",
+                        "row": 0,
+                        "projectName": "",
+                        "comment": "",
+                        "date": Date(),
+                        "timeStarted": Date(),
+                        "timeFinished": Date(),
+                        "crewUID": [],
+                        "expenses": 0.0
+                    ],
+                    documentId: "dummy"
+                )
+                TaskRow(log: dummyLog, isEmpty: true, selectedProject: .constant(dummyLog))
             } else {
                 ForEach(filteredLogs) { log in
                     TaskRow(log: log, isEmpty: false, selectedProject: .constant(log))
@@ -104,5 +116,4 @@ struct CalendarLogsView: View {
 #Preview {
     CalendarLogsView()
 }
-
 

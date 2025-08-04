@@ -14,7 +14,7 @@ struct WorkingFooterView: View {
 
     @State var project = "Select project"
     @State var showAddProject: Bool = false
-    @State private var errorMessage = ""
+    @State var errorMessage: String?
     private var working: Bool {
         return userViewModel.user?.working ?? false
     }
@@ -45,7 +45,7 @@ struct WorkingFooterView: View {
                 self.showAddProject.toggle()
             }label: {
                 Label("Create first project", systemImage: "folder.badge.plus")
-                    .padding(K.UI.padding*2)
+                    .padding(K.UI.padding)
                     .foregroundStyle(K.Colors.accent)
 //                    .background {
 //                        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
@@ -100,7 +100,7 @@ struct WorkingFooterView: View {
                 Text("Working on: ")
                     .font(.callout)
                     .bold()
-                ProjectSelectorView(text: $userViewModel.currentProjectName)
+                ProjectSelectorView(error: $errorMessage, text: $userViewModel.currentProjectName)
             }
             .onChange(of: userViewModel.currentProjectName) { old, newValue in
                 print("project changed for footer: \(newValue)")
@@ -124,18 +124,9 @@ struct WorkingFooterView: View {
                 Text("Clock In")
                     .font(.callout)
                     .bold()
-                if !errorMessage.isEmpty {
-                    errorMessageLabel
-                }
             }
-            ProjectSelectorView(text: $project)
+            ProjectSelectorView(error: $errorMessage, text: $project)
         }
-    }
-    
-    private var errorMessageLabel: some View {
-        Text(errorMessage)
-            .font(.callout)
-            .foregroundStyle(.red)
     }
     
     private var backround: some View {
@@ -205,3 +196,4 @@ struct WorkingFooterView: View {
     WorkingFooterView()
         .environmentObject(ProjectViewModel())
 }
+

@@ -57,7 +57,7 @@ struct AddLogView: View {
     
     private var logInfoSection: some View {
         Section(header: Text("Log Info")) {
-            ProjectSelectorView(text: $log.projectName)
+            ProjectSelectorView(error: .constant(nil), text: $log.projectName)
             
             TextField("Comment", text: $log.comment)
                 .focused($focusedField, equals: .comment)

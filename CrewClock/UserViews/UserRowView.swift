@@ -38,9 +38,9 @@ struct UserRowView: View {
     
     @ViewBuilder
     private func profileImage(for user: UserFB) -> some View {
-         let urlString = user.profileImage
-           if let url = URL(string: urlString) {
-               UserProfileImage(url.absoluteString)
+        let urlString = user.profileImage
+        if !urlString.isEmpty {
+               UserProfileImage(urlString)
             .frame(width: 40, height: 40)
             .clipShape(Circle())
         } else {

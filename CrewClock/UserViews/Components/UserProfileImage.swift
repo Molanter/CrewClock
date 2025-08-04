@@ -29,7 +29,7 @@ struct UserProfileImage: View {
                     EmptyView()
                 }
             }
-            .aspectRatio(contentMode: .fit)
+            .aspectRatio(contentMode: .fill)
             .cornerRadius(.infinity)
     }
 }
