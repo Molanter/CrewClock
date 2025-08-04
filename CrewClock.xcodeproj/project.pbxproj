@@ -42,11 +42,6 @@
 			path = CrewClock;
 			sourceTree = "<group>";
 		};
-		9EA6B8782E41310B0029444D /* SettingsViews */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SettingsViews;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,7 +70,6 @@
 			children = (
 				9E380C6E2DE61F160023654A /* CrewClock */,
 				9E380C6D2DE61F160023654A /* Products */,
-				9EA6B8782E41310B0029444D /* SettingsViews */,
 			);
 			sourceTree = "<group>";
 		};
@@ -104,7 +98,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				9E380C6E2DE61F160023654A /* CrewClock */,
-				9EA6B8782E41310B0029444D /* SettingsViews */,
 			);
 			name = CrewClock;
 			packageProductDependencies = (
