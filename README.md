@@ -89,7 +89,7 @@ To contribute:
 Have questions or want to collaborate?
 
 * GitHub: [Molanter](https://github.com/Molanter)
-* Email: \[Your email here if you'd like to share it]
+* Email: \[e.yarmolatiy@gmail.com]
 
 ---
 

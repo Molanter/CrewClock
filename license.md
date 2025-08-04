@@ -16,5 +16,5 @@ No warranties are provided. Use at your own risk.
 
 If you want to use CrewClock commercially or integrate part of the code into another project, please contact the author for permission.
 
-Contact: molanter.dev@example.com
+Contact: e.yarmolatiy@gmail.com
 
