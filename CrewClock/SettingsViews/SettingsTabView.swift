@@ -58,6 +58,19 @@ struct SettingsTabView: View {
                     NavigationLink("Re-authenticate Google", destination: Text("Re-auth View"))
                     NavigationLink("Reset App Settings", destination: Text("Reset Settings View"))
                 }
+                
+                Section(header: Text("About")) {
+                    NavigationLink("About App", destination: AppOverviewView())
+                    NavigationLink("Policy Policy", destination: WebView(url: K.Links.privacyPolicy).edgesIgnoringSafeArea(.bottom).tint(K.Colors.accent))
+                    NavigationLink("Terms of Use ", destination: WebView(url: K.Links.termsOfUse).edgesIgnoringSafeArea(.bottom).tint(K.Colors.accent))
+                }
+                
+                Section(footer: Text("Version 1.0.0")) {
+                    Text("CrewClock © 2025 Molanter")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+                
                 Section {
                     Spacer()
                         .frame(height: 50)

@@ -23,9 +23,9 @@ struct CrewClockApp: App {
     @StateObject private var searchUserViewModel: SearchUserViewModel = .init()
     @StateObject private var notificationsViewModel: NotificationsViewModel = .init()
     @StateObject private var publishedVariables: PublishedVariebles = .init()
-
-
-
+    
+    
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -37,6 +37,7 @@ struct CrewClockApp: App {
                 .environmentObject(publishedVariables)
                 .environmentObject(searchUserViewModel)
                 .environmentObject(notificationsViewModel)
+            
         }
     }
 }

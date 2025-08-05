@@ -8,11 +8,20 @@
 import SwiftUI
 
 struct ContentView: View {
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     
     var body: some View {
-        RootView()
-            .accentColor(K.Colors.accent)
-            
+        if hasSeenOnboarding{
+            RootView()
+                .accentColor(K.Colors.accent)
+        }else {
+            OnboardingView(
+                isShowing: Binding(
+                    get: { !hasSeenOnboarding },
+                    set: { newValue in hasSeenOnboarding = !newValue }
+                )
+            )
+        }
     }
 }
 

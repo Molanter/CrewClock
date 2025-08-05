@@ -9,4 +9,6 @@ import SwiftUI
 
 struct app {
     @AppStorage("fcmToken") static var fcmToken: String?
+    /*@AppStorage("hasSeenOnboarding") */static var hasSeenOnboarding = false
+
 }

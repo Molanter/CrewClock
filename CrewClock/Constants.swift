@@ -46,4 +46,9 @@ struct K {
             "big_eyes" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-384.gif?alt=media&token=dcf7984d-b857-4854-b304-b880e9ef052f"
         ]
     }
+    
+    struct Links {
+        static var privacyPolicy: URL = URL(string: "https://www.notion.so/Privacy-Policy-Crew-s-Clock-246e6ff13e478094a947c537ad6893db")!
+        static var termsOfUse: URL = URL(string: "https://www.notion.so/Terms-of-Use-Crew-s-Clock-246e6ff13e47809d922af3828fff2af3")!
+    }
 }
