@@ -1,8 +1,8 @@
 //
 //  TaskRow.swift
-//  CalendarScrollEffect
+//  CrewClock
 //
-//  Created by Balaji Venkatesh on 21/05/25.
+//  Created by Edgars Yarmolatiy on 8/1/25.
 //
 
 import SwiftUI
@@ -10,6 +10,7 @@ import FirebaseFirestore
 
 struct TaskRow: View {
     @EnvironmentObject private var logsViewModel: LogsViewModel
+    @EnvironmentObject private var projectViewModel: ProjectViewModel
     
     var log: LogFB
     var isEmpty: Bool = false
@@ -19,6 +20,20 @@ struct TaskRow: View {
     @State var showDeleteAlert: Bool = false
     @State var showEditSheet: Bool = false
     @State var editingLog: LogFB?
+    
+    private var color: Color {
+        if isEmpty {
+            return Color.listRow
+        }else {
+            if let project = projectViewModel.projects.first(where: { project in
+                project.name == log.projectName
+            }) {
+                return ProjectColorHelper.color(for: project.color)
+            }else {
+                return Color.listRow
+            }
+        }
+    }
     
     var body: some View {
         row
@@ -57,40 +72,58 @@ struct TaskRow: View {
             if isEmpty {
                 noLog
             } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .center, spacing: 5) {
-                        Text(formattedTime(log.timeStarted) + " - " + formattedTime(log.timeFinished))
-                            .font(.callout)
-                            .bold()
-                        Spacer()
-                        ProjectsMenuView(selected: $selectedProject)
+                HStack(alignment: .center) {
+                    if !isEmpty {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(color)
+                            .frame(width: 8)
                     }
-                    if !log.comment.isEmpty {
-                        Text(log.comment)
-                            .font(.body)
-                            .foregroundStyle(.primary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        headerText
+                        if !log.comment.isEmpty {
+                            comment
+                        }
+                        footerText
                     }
-                    HStack {
-                        Text(formattedDate(log.date))
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        Spacer(minLength: 0)
-                        
-                        Text("Some place, Minnesota")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.gray)
-                    .padding(.top, 5)
                 }
-                .lineLimit(1)
-                .padding(15)
+                .padding(K.UI.padding)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .background {
-            RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-                .fill(.listRow)
-                .shadow(color: .white.opacity(0.35), radius: 1)
+            background
         }
+    }
+    
+    private var headerText: some View {
+        HStack(alignment: .center, spacing: 5) {
+            Text(formattedTime(log.timeStarted) + " - " + formattedTime(log.timeFinished))
+                .font(.callout)
+                .bold()
+            Spacer()
+            ProjectsMenuView(selected: $selectedProject)
+        }
+    }
+    
+    private var comment: some View {
+        Text(log.comment)
+            .font(.body)
+            .foregroundStyle(.primary)
+    }
+    
+    
+    private var footerText: some View {
+        HStack {
+            Text(formattedDate(log.date))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            
+            Text("Some place, Minnesota")
+        }
+        .font(.caption)
+        .foregroundStyle(.gray)
+        .padding(.top, 5)
     }
     
     private var noLog: some View {
@@ -103,6 +136,24 @@ struct TaskRow: View {
         }
         .frame(height: 60)
         .frame(maxWidth: .infinity)
+    }
+    
+    private var background: some View {
+        Group {
+            if isEmpty {
+                if #available(iOS 17.0, *) {
+                    RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+                        .fill(BackgroundStyle().secondary)
+                } else {
+                    RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+                        .fill(Color(uiColor: .secondarySystemBackground))
+                }
+            }else {
+                RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+                    .fill(color)
+                    .opacity(0.3)
+            }
+        }
     }
     
     private func formattedDate(_ date: Date) -> String {
@@ -137,7 +188,8 @@ struct TaskRow: View {
         ],
         documentId: "log_001"
     )
-    TaskRow(log: exampleLog, selectedProject: .constant(exampleLog))
+    TaskRow(log: exampleLog, isEmpty: true, selectedProject: .constant(exampleLog))
         .environmentObject(ProjectViewModel())
+        .environmentObject(LogsViewModel())
 }
 

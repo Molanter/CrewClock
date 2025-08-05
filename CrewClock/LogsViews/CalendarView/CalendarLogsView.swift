@@ -9,6 +9,7 @@ import SwiftUI
 
 struct CalendarLogsView: View {
     @EnvironmentObject private var logsViewModel: LogsViewModel
+    @Environment(\.colorScheme) var colorScheme
 
     @State private var currentDate = Date()
     @State private var currentWeek: [Date.Day] = Date.currentWeek(from: Date())
@@ -18,7 +19,6 @@ struct CalendarLogsView: View {
     var body: some View {
         VStack(spacing: 0) {
             CalendarHeader(currentDate: $currentDate, currentWeek: $currentWeek, selectedDate: $selectedDate)
-//            .environment(\.colorScheme, .dark)
 
             GeometryReader { proxy in
                 let size = proxy.size
@@ -61,7 +61,7 @@ struct CalendarLogsView: View {
                 .safeAreaPadding(.bottom, 70)
                 .padding(.bottom, -70)
             }
-            .background(.background)
+            .background(backGroundColor())
             .clipShape(
                 UnevenRoundedRectangle(
                     topLeadingRadius: 30,
@@ -71,10 +71,10 @@ struct CalendarLogsView: View {
                     style: .continuous
                 )
             )
-//            .environment(\.colorScheme, .dark)
             .ignoresSafeArea(.all, edges: .bottom)
         }
-        .background(Color.listRow)
+        .background(Color(uiColor: .secondarySystemBackground))
+//        colorScheme == .light ? backGroundColor() : .background.secondary
         .onAppear {
             if selectedDate == nil {
                 selectedDate = currentWeek.first(where: { $0.date.isSame(.now) })?.date
@@ -111,9 +111,14 @@ struct CalendarLogsView: View {
             }
         }
     }
+    
+    private func backGroundColor() -> Color {
+        return colorScheme == .light ? Color(red: 242, green: 242, blue: 247) : .black
+    }
 }
 
 #Preview {
     CalendarLogsView()
+        .environmentObject(LogsViewModel())
 }
 

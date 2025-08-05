@@ -17,18 +17,19 @@ struct TabsView: View {
     @State private var showSearchBar: Bool = false
     
     init() {
-        let tabBarAppearance = UITabBar.appearance()
-        tabBarAppearance.backgroundColor = UIColor.systemGray6
+        if #unavailable(iOS 26.0, ) {
+            let tabBarAppearance = UITabBar.appearance()
+            tabBarAppearance.backgroundColor = UIColor.systemGray6
+        }
     }
     
     var body: some View {
         
-        modernTabs
-//        TabView(selection: $publishedVars.tabSelected) {
-//            log
-//            clock
-//            settings
-//        }
+        if #available(iOS 26.0, *) {
+           tabView
+        } else {
+            modernTabs
+        }
     }
     
     //MARK: Different TabView Look (like iOS26)
@@ -65,41 +66,68 @@ struct TabsView: View {
         }
     }
     
-    
-    //MARK: Tab Items
-    private var log: some View {
-        LogsTabView()
-            .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")
-            .tabItem {
-                Label("Logs", systemImage: "list.bullet.below.rectangle")
+    @available(iOS 26.0, *)
+    private var tabView: some View {
+        TabView(selection: $publishedVars.tabSelected) {
+            Tab("Logs", systemImage: "list.bullet.below.rectangle", value: 0) {
+                CalendarLogsView()
+                    .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")
             }
-            .tag(0)
+            Tab("Clock", systemImage: "clock", value: 1) {
+                ClockTabView()
+            }
+            Tab("Settings", systemImage: "gearshape", value: 2) {
+                SettingsTabView()
+            }
+            Tab(value: 3, role: .search) {
+                NavigationStack {
+                    ClockSearchView()
+                        .navigationTitle("Search")
+                }
+                    .searchable(text: $publishedVars.searchClock, placement: .navigationBarDrawer, prompt: "Search People")
+                    .onChange(of: publishedVars.searchClock) { oldValue, newValue in
+                        searchUserViewModel.searchUsers(with: newValue)
+                        print("searchUserViewModel.foundUIDs: -- ", searchUserViewModel.foundUIDs)
+                    }
+            }
+        }
+        .tabViewBottomAccessory {
+            WorkingFooterView()
+        }
+        .tabBarMinimizeBehavior(.onScrollDown)
     }
     
-    private var clock: some View {
-        ClockTabView()
-            .searchable(text: $publishedVars.searchClock, placement: .navigationBarDrawer, prompt: "Search People")
-            .onChange(of: publishedVars.searchClock) { oldValue, newValue in
-                searchUserViewModel.searchUsers(with: newValue)
-                print("searchUserViewModel.foundUIDs: -- ", searchUserViewModel.foundUIDs)
-            }
-            .tabItem {
-                Label("Clock", systemImage: "clock")
-            }
-            .tag(1)
-    }
+//    //MARK: Tab Items
+//    private var log: some View {
+//        LogsTabView()
+//            .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")
+//    }
+//    
+//    private var clock: some View {
+//        ClockTabView()
+//    }
+//    
+//    private var settings: some View {
+//        SettingsTabView()
+//    }
     
-    private var settings: some View {
-        SettingsTabView()
-            .tabItem {
-                Label("Settings", systemImage: "gearshape")
-            }
-            .tag(2)
-    }
+//    @available(iOS 26, *)
+//    private var search: some View {
+//        Tab("Search", systemImage: "magnifyingglass", role: .search) {
+//            ClockSearchView()
+//                .searchable(text: $publishedVars.searchClock, placement: .navigationBarDrawer, prompt: "Search People")
+//                .onChange(of: publishedVars.searchClock) { oldValue, newValue in
+//                    searchUserViewModel.searchUsers(with: newValue)
+//                    print("searchUserViewModel.foundUIDs: -- ", searchUserViewModel.foundUIDs)
+//                }
+//        }
+//    }
 }
 
+//@SceneStorage("selectedTab") private var selectedTab = 0
 
 #Preview {
     TabsView()
         .environmentObject(PublishedVariebles())
 }
+

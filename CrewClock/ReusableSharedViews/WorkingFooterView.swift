@@ -34,8 +34,8 @@ struct WorkingFooterView: View {
         .onAppear {
             onAppear()
         }
-        .padding(.bottom, K.UI.padding)
-        .padding(.horizontal, 15)
+        .modifier(ConditionalBottomPadding())
+        .modifier(ConditionalHorizontalPadding())
     }
     
     private var newProject: some View {
@@ -44,9 +44,12 @@ struct WorkingFooterView: View {
             Button{
                 self.showAddProject.toggle()
             }label: {
-                Label("Create first project", systemImage: "folder.badge.plus")
-                    .padding(K.UI.padding)
-                    .foregroundStyle(K.Colors.accent)
+                HStack(alignment: .center) {
+                    Image(systemName: "folder.badge.plus")
+                    Text("Create first project")
+                }
+                .foregroundStyle(K.Colors.accent)
+                .modifier(ConditionalPadding())
 //                    .background {
 //                        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
 //                            .fill(K.Colors.accent)
@@ -63,6 +66,7 @@ struct WorkingFooterView: View {
         }
         .sheet(isPresented: $showAddProject) {
             AddProjectView()
+                .tint(K.Colors.accent)
         }
 
     }
@@ -130,13 +134,14 @@ struct WorkingFooterView: View {
     }
     
     private var backround: some View {
-//        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-//            .fill(Color.listRow)
-        TransparentBlurView(removeAllFilters: false)
-            .blur(radius: 9, opaque: true)
-            .background(.white.opacity(0.05))
-            .cornerRadius(K.UI.cornerRadius)
-//            .cornerRadius(K.UI.cornerRadius, corners: [.topLeft, .topRight])
+        Group {
+            if #unavailable(iOS 26.0, ) {
+                TransparentBlurView(removeAllFilters: false)
+                    .blur(radius: 9, opaque: true)
+                    .background(.white.opacity(0.05))
+                    .cornerRadius(K.UI.cornerRadius)
+            }
+        }
     }
     
     private func formatTime() -> String {
@@ -192,8 +197,37 @@ struct WorkingFooterView: View {
     }
 }
 
+struct ConditionalPadding: ViewModifier {
+    func body(content: Content) -> some View {
+        if #unavailable(iOS 26.0) {
+            content.padding(K.UI.padding)
+        } else {
+            content
+        }
+    }
+}
+
+struct ConditionalBottomPadding: ViewModifier {
+    func body(content: Content) -> some View {
+        if #unavailable(iOS 26.0) {
+            content.padding(.bottom, K.UI.padding)
+        } else {
+            content
+        }
+    }
+}
+
+struct ConditionalHorizontalPadding: ViewModifier {
+    func body(content: Content) -> some View {
+        if #unavailable(iOS 26.0) {
+            content.padding(.horizontal, 15)
+        } else {
+            content
+        }
+    }
+}
+
 #Preview {
     WorkingFooterView()
         .environmentObject(ProjectViewModel())
 }
-

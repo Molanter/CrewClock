@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct CalendarHeader: View {
+    @Environment(\.colorScheme) var colorScheme
+    
     /// View Properties
     @Binding var currentDate: Date
     @Binding var currentWeek: [Date.Day]
@@ -63,7 +65,7 @@ struct CalendarHeader: View {
                                 Text(date.string("dd"))
                                     .font(.title3)
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(isSameDate ? .black : .white)
+                                    .foregroundStyle(isSameDate ? selctedColor() : usualColor())
                                     .frame(width: 38, height: 38)
                                     .background {
                                         if isSameDate {
@@ -156,4 +158,17 @@ struct CalendarHeader: View {
                 .foregroundStyle(K.Colors.accent)
         }
     }
+    
+    private func usualColor() -> Color {
+        return colorScheme == .light ? Color.black : Color.white
+    }
+    
+    private func selctedColor() -> Color {
+        return colorScheme == .dark ? Color.black : Color.white
+
+    }
 }
+
+#Preview {
+    CalendarLogsView()
+        .environmentObject(LogsViewModel())}
