@@ -15,17 +15,20 @@ struct RootView: View {
     @EnvironmentObject private var notificationsViewModel: NotificationsViewModel
     
     var body: some View {
-        if authViewModel.isSignedIn {
-            TabsView()
-                .onAppear {
-                    logViewModel.fetchLogs()
-                    projectViewModel.fetchProjects()
-                    notificationsViewModel.fetchNotifications(completion: { array in notificationsViewModel.notifications = array })
-                    userViewModel.fetchUser()
-                }
-        } else {
-            SignInView()
+        Group {
+            if authViewModel.isSignedIn {
+                TabsView()
+                    .onAppear {
+                        logViewModel.fetchLogs()
+                        projectViewModel.fetchProjects()
+                        notificationsViewModel.fetchNotifications(completion: { array in notificationsViewModel.notifications = array })
+                        userViewModel.fetchUser()
+                    }
+            } else {
+                SignInView()
+            }
         }
+        .id(authViewModel.isSignedIn) /// <- forces a clean rebuild on sign-in/out
     }
 }
 

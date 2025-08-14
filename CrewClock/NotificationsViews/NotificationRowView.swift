@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import LoremSwiftum
 import FirebaseAuth
 
 struct NotificationRowView: View {

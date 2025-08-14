@@ -34,14 +34,29 @@ class AuthViewModel: NSObject, ObservableObject {
             self.userName = user.displayName
             self.userEmail = user.email
             print("✅ Restored Firebase session: \(user.email ?? "")")
+        } else {
+            self.isSignedIn = false
         }
-        
+
         GIDSignIn.sharedInstance.restorePreviousSignIn { [weak self] user, error in
-            if let user = user {
-                self?.userToken = user.accessToken.tokenString
-                print("🟢 Restored Google access token: \(self?.userToken ?? "nil")")
-            } else {
+            guard let self = self else { return }
+            guard let user = user, error == nil else {
                 print("⚠️ Google user not restored: \(error?.localizedDescription ?? "unknown error")")
+                self.userToken = nil
+                return
+            }
+
+            // IMPORTANT: refresh before reading the token
+            user.refreshTokensIfNeeded { auth, err in
+                if let err = err {
+                    print("⚠️ Failed to refresh Google tokens: \(err.localizedDescription)")
+                    self.userToken = nil
+                    return
+                }
+
+                let token = user.accessToken.tokenString
+                self.userToken = token
+                print("🟢 Restored Google access token: \(token ?? "nil")")
             }
         }
     }

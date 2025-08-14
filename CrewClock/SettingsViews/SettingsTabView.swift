@@ -51,7 +51,7 @@ struct SettingsTabView: View {
 
                 Section(header: Text("Privacy & Data")) {
                     NavigationLink("Export My Logs", destination: Text("Export Logs View"))
-                    NavigationLink("Delete My Account", destination: Text("Delete Account View"))
+                    NavigationLink("Delete My Account", destination: DeleteAccountView().environmentObject(AccountDeletionViewModel()).environmentObject(AuthViewModel()))
                 }
 
                 Section(header: Text("Advanced")) {
