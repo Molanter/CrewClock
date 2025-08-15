@@ -12,6 +12,7 @@ import FirebaseAuth
 struct ClockSearchView: View {
     @EnvironmentObject var searchUserViewModel: SearchUserViewModel
     @EnvironmentObject var userViewModel: UserViewModel
+    @EnvironmentObject private var connectionsVM: ConnectionsViewModel
     @EnvironmentObject var notificationsViewModel: NotificationsViewModel
     @EnvironmentObject var publishedVars: PublishedVariebles
     
@@ -32,7 +33,7 @@ struct ClockSearchView: View {
     
     private var switchView: some View {
         Group {
-            if !publishedVars.searchClock.isEmpty, !publishedVars.searchClock.isEmpty{
+            if !publishedVars.searchClock.isEmpty {
                 list
             }else if searchUserViewModel.foundUIDs.isEmpty, !publishedVars.searchClock.isEmpty {
                 VStack {
@@ -60,13 +61,13 @@ struct ClockSearchView: View {
         HStack(alignment: .center) {
             UserRowView(uid: uid)
             Spacer()
-            if userViewModel.user?.connections.contains(uid) == true {
-                Text("Connected")
-                    .foregroundStyle(.secondary)
-            } else if sentInvites.contains(uid) {
-                Text("Sent")
-                    .foregroundStyle(.gray)
-            } else {
+//            if userViewModel.user?.connections.contains(uid) == true {
+//                Text("Connected")
+//                    .foregroundStyle(.secondary)
+//            } else if sentInvites.contains(uid) {
+//                Text("Sent")
+//                    .foregroundStyle(.gray)
+//            } else {
                 Button {
                     self.connectWithPerson(uid)
                 } label: {
@@ -74,26 +75,14 @@ struct ClockSearchView: View {
                         .foregroundStyle(K.Colors.accent)
                 }
                 .buttonStyle(.plain)
-            }
+//            }
         }
     }
     
     private func connectWithPerson(_ uid: String) {
         sentInvites.insert(uid)
         self.notificationUID = uid
-        
-        let newNotification = NotificationModel(
-            title: "Do you whant to connect?",
-            message: "\(userViewModel.user?.name ?? auth.currentUser?.displayName ?? "Someone") sent a connection invite. Respond to it in the app.",
-            timestamp: Date(),
-            recipientUID: [uid],
-            fromUID: userViewModel.user?.uid ?? auth.currentUser?.uid ?? "",
-            isRead: false,
-            type: .connectInvite,
-            relatedId: uid
-        )
-        
-        notificationsViewModel.getFcmByUid(uid: uid, notification: newNotification)
+        connectionsVM.connectWithPerson(uid)
     }
 }
 

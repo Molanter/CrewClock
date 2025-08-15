@@ -15,13 +15,14 @@ struct CrewClockApp: App {
     // register app delegate for Firebase setup
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
-    @StateObject private var authViewModel: AuthViewModel = .init()
-    @StateObject private var sheetViewModel: SpreadSheetViewModel = .init()
-    @StateObject private var logsViewModel: LogsViewModel = .init()
-    @StateObject private var projectViewModel: ProjectViewModel = .init()
-    @StateObject private var userViewModel: UserViewModel = .init()
-    @StateObject private var searchUserViewModel: SearchUserViewModel = .init()
-    @StateObject private var notificationsViewModel: NotificationsViewModel = .init()
+    @StateObject private var authVM: AuthViewModel = .init()
+    @StateObject private var sheetVM: SpreadSheetViewModel = .init()
+    @StateObject private var logsVM: LogsViewModel = .init()
+    @StateObject private var projectVM: ProjectViewModel = .init()
+    @StateObject private var userVM: UserViewModel = .init()
+    @StateObject private var searchUserVM: SearchUserViewModel = .init()
+    @StateObject private var notificationsVM: NotificationsViewModel = .init()
+    @StateObject private var connectionsVM: ConnectionsViewModel = .init()
     @StateObject private var publishedVariables: PublishedVariebles = .init()
     
     
@@ -29,15 +30,15 @@ struct CrewClockApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(authViewModel)
-                .environmentObject(sheetViewModel)
-                .environmentObject(logsViewModel)
-                .environmentObject(projectViewModel)
-                .environmentObject(userViewModel)
+                .environmentObject(authVM)
+                .environmentObject(sheetVM)
+                .environmentObject(logsVM)
+                .environmentObject(projectVM)
+                .environmentObject(userVM)
+                .environmentObject(searchUserVM)
+                .environmentObject(notificationsVM)
+                .environmentObject(connectionsVM)
                 .environmentObject(publishedVariables)
-                .environmentObject(searchUserViewModel)
-                .environmentObject(notificationsViewModel)
-            
         }
     }
 }

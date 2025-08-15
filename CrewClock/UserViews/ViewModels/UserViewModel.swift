@@ -14,8 +14,11 @@ class UserViewModel: ObservableObject {
     @Published var users: [String: UserFB] = [:]
     @Published var currentProjectName: String = ""
 
-
     private var db = Firestore.firestore()
+    private var auth = Auth.auth()
+    private let notificationsVM = NotificationsViewModel()
+    
+    
 
     func fetchUser() {
         guard let uid = Auth.auth().currentUser?.uid else { return }
@@ -94,76 +97,6 @@ class UserViewModel: ObservableObject {
                 print("Error updating spreadsheet ID: \(error.localizedDescription)")
             } else {
                 print("✅ Spreadsheet ID updated successfully")
-                self.fetchUser()
-            }
-        }
-    }
-
-    func addConnection(_ connection: String) {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-
-        let userRef = db.collection("users").document(uid)
-        let connectionRef = db.collection("users").document(connection)
-
-        let batch = db.batch()
-
-        // Add connection to current user's connections array
-        batch.updateData([
-            "connections": FieldValue.arrayUnion([connection])
-        ], forDocument: userRef)
-
-        // Add current user to the other user's connections array
-        batch.updateData([
-            "connections": FieldValue.arrayUnion([uid])
-        ], forDocument: connectionRef)
-
-        batch.commit { error in
-            if let error = error {
-                print("❌ Error adding mutual connections: \(error.localizedDescription)")
-            } else {
-                print("✅ Mutual connection added successfully")
-                self.fetchUser()
-            }
-        }
-    }
-    
-    
-    func removeConnection(_ connection: String) {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        
-        let userRef = db.collection("users").document(uid)
-        let connectionRef = db.collection("users").document(connection)
-        
-        let batch = db.batch()
-        
-        // Remove connection from current user's connections array
-        batch.updateData([
-            "connections": FieldValue.arrayRemove([connection])
-        ], forDocument: userRef)
-        
-        // Remove current user from the other user's connections array
-        batch.updateData([
-            "connections": FieldValue.arrayRemove([uid])
-        ], forDocument: connectionRef)
-        
-        batch.commit { error in
-            if let error = error {
-                print("❌ Error removing mutual connections: \(error.localizedDescription)")
-            } else {
-                print("✅ Mutual connection removed successfully")
-                self.fetchUser()
-            }
-        }
-    }
-    
-    
-    func deleteUser() {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        db.collection("users").document(uid).delete { error in
-            if let error = error {
-                print("Error deleting user: \(error.localizedDescription)")
-            } else {
-                print("✅ User deleted successfully")
                 self.fetchUser()
             }
         }

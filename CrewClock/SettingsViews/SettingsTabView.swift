@@ -13,6 +13,8 @@ struct SettingsTabView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject var publishedVars: PublishedVariebles
     @EnvironmentObject var notificationsViewModel: NotificationsViewModel
+    @EnvironmentObject private var connectionsVM: ConnectionsViewModel
+
     
     var body: some View {
         NavigationStack {
@@ -119,9 +121,8 @@ struct SettingsTabView: View {
             UserConnectionsView()
 //                    .searchable(text: $publishedVars.userSearch)
         } label: {
-            if let connections = userViewModel.user?.connections.count {
-                SettingRoundedButton(image: false, text1: "Connections", text2: connections.description)
-            }
+            let count = connectionsVM.connections.filter { $0.status == "accepted" }.count
+            SettingRoundedButton(image: false, text1: "Connections", text2: count.description)
         }
         .buttonStyle(.plain)
     }

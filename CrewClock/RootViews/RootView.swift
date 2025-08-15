@@ -13,6 +13,8 @@ struct RootView: View {
     @EnvironmentObject var projectViewModel: ProjectViewModel
     @EnvironmentObject var userViewModel: UserViewModel
     @EnvironmentObject private var notificationsViewModel: NotificationsViewModel
+    @EnvironmentObject private var connectionsVM: ConnectionsViewModel
+
     
     var body: some View {
         Group {
@@ -23,6 +25,8 @@ struct RootView: View {
                         projectViewModel.fetchProjects()
                         notificationsViewModel.fetchNotifications(completion: { array in notificationsViewModel.notifications = array })
                         userViewModel.fetchUser()
+                        connectionsVM.fetchAllConnections()
+
                     }
             } else {
                 SignInView()

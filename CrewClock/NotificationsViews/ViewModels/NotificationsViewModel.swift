@@ -47,92 +47,63 @@ class NotificationsViewModel: ObservableObject {
     
     /// Fetches FCM tokens by user UID and sends notification
     func getFcmByUid(uid: String, notification: NotificationModel) {
-        db.collection("users")
-            .document(uid)
-            .getDocument { [weak self] documentSnapshot, error in
-                guard let self = self else { return }
 
-                if let error = error {
-                    print("Error fetching user token: \(error.localizedDescription)")
-                    return
-                }
-
-                guard let data = documentSnapshot?.data() else {
-                    print("No user document found for UID: \(uid)")
-                    return
-                }
-
-                let token = data["token"] as? String ?? ""
-                print("Token:", token)
-                // recipientUID is [String], so wrap uid as an array
-                let updatedNotification = NotificationModel(
-                    notificationId: notification.notificationId,
-                    title: notification.title,
-                    message: notification.message,
-                    timestamp: notification.timestamp,
-                    recipientUID: [uid],
-                    fromUID: notification.fromUID,
-                    isRead: notification.isRead,
-                    status: notification.status,
-                    type: notification.type,
-                    relatedId: notification.relatedId,
-                    imageUrl: notification.imageUrl
-                )
-                self.sendNotification(updatedNotification)
-            }
+        // We don't read other users' fcmTokens from the client (rules forbid it).
+        // Just target the UID and let the server function look up tokens.
+        let updatedNotification = NotificationModel(
+            notificationId: notification.notificationId,
+            title: notification.title,
+            message: notification.message,
+            timestamp: notification.timestamp,
+            recipientUID: [uid],
+            fromUID: notification.fromUID,
+            isRead: notification.isRead,
+            status: notification.status,
+            type: notification.type,
+            relatedId: notification.relatedId,
+            imageUrl: notification.imageUrl
+        )
+        self.sendNotification(updatedNotification)
     }
     
     
     func sendNotification(_ notification: NotificationModel) {
+
+        // Ensure we have a stable notificationId; if none provided, generate one.
+        let baseId: String
+        if !notification.notificationId.isEmpty {
+            baseId = notification.notificationId
+        } else {
+            baseId = UUID().uuidString
+        }
+
         for recipientUID in notification.recipientUID {
-            db.collection("users")
-                .document(recipientUID)
-                .collection("fcmTokens")
-                .getDocuments { [weak self] snapshot, error in
-                    guard let self = self else { return }
+            var notificationData: [String: Any] = [
+                "notificationId": baseId,
+                "title": notification.title,
+                "message": notification.message,
+                "timestamp": Timestamp(date: notification.timestamp),
+                "recipientUID": [recipientUID],
+                "isRead": notification.isRead,
+                "status": notification.status.rawValue,
+                "type": notification.type.rawValue,
+                "relatedId": notification.relatedId as Any,
+                "fromUID": notification.fromUID
+            ]
 
+            if let imageUrl = notification.imageUrl, imageUrl.starts(with: "http") {
+                notificationData["imageUrl"] = imageUrl
+            }
+
+            Firestore.firestore()
+                .collection("notifications")
+                .document("\(baseId)_\(recipientUID)")
+                .setData(notificationData) { [weak self] error in
                     if let error = error {
-                        print("Error fetching FCM tokens for \(recipientUID): \(error.localizedDescription)")
-                        return
-                    }
-
-                    guard let documents = snapshot?.documents, !documents.isEmpty else {
-                        print("❌ No FCM tokens found for user: \(recipientUID)")
-                        return
-                    }
-
-                    let tokens = documents.map { $0.documentID }
-
-                    for token in tokens {
-                        var notificationData: [String: Any] = [
-                            "notificationId": notification.notificationId,
-                            "title": notification.title,
-                            "message": notification.message,
-                            "timestamp": Timestamp(date: notification.timestamp),
-                            "recipientUID": [recipientUID],
-                            "isRead": notification.isRead,
-                            "status": notification.status.rawValue,
-                            "type": notification.type.rawValue,
-                            "relatedId": notification.relatedId,
-                            "fromUID": notification.fromUID
-                        ]
-                        
-                        // Only add imageUrl if it's a valid URL string starting with "http"
-                        if let imageUrl = notification.imageUrl, imageUrl.starts(with: "http") {
-                            notificationData["imageUrl"] = imageUrl
-                        }
-
-                        Firestore.firestore()
-                            .collection("notifications")
-                            .document("\(notification.notificationId)_\(recipientUID)")
-                            .setData(notificationData) { error in
-                                if let error = error {
-                                    print("❌ Error saving notification for \(recipientUID): \(error.localizedDescription)")
-                                } else {
-                                    print("✅ Notification saved to Firestore for \(recipientUID)")
-                                    self.sendNotificationViaFunction(notification)
-                                }
-                            }
+                        print("❌ Error saving notification for \(recipientUID): \(error.localizedDescription)")
+                    } else {
+                        print("✅ Notification saved to Firestore for \(recipientUID)")
+                        self?.sendNotificationViaFunction(notification)
                     }
                 }
         }

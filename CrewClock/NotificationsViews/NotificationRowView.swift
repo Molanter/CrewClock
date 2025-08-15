@@ -10,6 +10,7 @@ import FirebaseAuth
 
 struct NotificationRowView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
+    @EnvironmentObject private var connectionsVM: ConnectionsViewModel
     @EnvironmentObject private var projectViewModel: ProjectViewModel
     @EnvironmentObject private var notificationViewModel: NotificationsViewModel
 
@@ -141,20 +142,8 @@ struct NotificationRowView: View {
         }
     
     private func connectFunc() {
-        userViewModel.addConnection(notification.fromUID)
+        connectionsVM.acceptConnection(from: notification.fromUID, notificationId: notification.notificationId)
         notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
-        let newNotification = NotificationModel(
-            title: "You connected",
-            message: "\(userViewModel.user?.name ?? auth.currentUser?.displayName ?? "Someone") accepted your connection request.",
-            timestamp: Date(),
-            recipientUID: [notification.fromUID],
-            fromUID: userViewModel.user?.uid ?? auth.currentUser?.uid ?? "",
-            isRead: false,
-            type: .connectInvite,
-            relatedId: notification.fromUID
-        )
-        
-        notificationViewModel.getFcmByUid(uid: notification.fromUID, notification: newNotification)
     }
 
 }
