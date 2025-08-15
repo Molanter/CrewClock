@@ -82,4 +82,77 @@ class SearchUserViewModel: ObservableObject {
                 }
             }
     }
+    
+    /// Search among your *accepted* connections by name or email (prefix, case-insensitive)
+    func searchAcceptedConnections(matching query: String, limit: Int = 50) {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else {
+            self.foundUIDs = []
+            return
+        }
+
+        Task {
+            guard let me = Auth.auth().currentUser?.uid else {
+                await MainActor.run { self.foundUIDs = [] }
+                return
+            }
+            let db = Firestore.firestore()
+
+            do {
+                // 1) Fetch all relationships that include me → filter to accepted locally (no index required)
+                let relSnap = try await db.collection("connections")
+                    .whereField("uids", arrayContains: me)
+                    .getDocuments()
+
+                // Collect OTHER user IDs for accepted connections
+                var otherUIDs = Set<String>()
+                for doc in relSnap.documents {
+                    let d = doc.data()
+                    let status = (d["status"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    guard status == "accepted" else { continue }
+                    if let uids = d["uids"] as? [String],
+                       let other = uids.first(where: { $0 != me }) {
+                        otherUIDs.insert(other)
+                    }
+                }
+
+                guard !otherUIDs.isEmpty else {
+                    await MainActor.run { self.foundUIDs = [] }
+                    return
+                }
+
+                // 2) Fetch those user docs in batches of 10 (Firestore whereIn limit)
+                var matched = [String]()
+                let allIDs = Array(otherUIDs)
+                let batches = stride(from: 0, to: allIDs.count, by: 10).map {
+                    Array(allIDs[$0..<min($0+10, allIDs.count)])
+                }
+
+                for batch in batches {
+                    let snap = try await db.collection("users")
+                        .whereField(FieldPath.documentID(), in: batch)
+                        .getDocuments()
+
+                    for doc in snap.documents {
+                        let d = doc.data()
+                        // Prefer shadow fields if you maintain them; else fall back
+                        let nameLower  = (d["name"]  as? String)?.lowercased()  ?? ""
+                        let emailLower = (d["email"] as? String)?.lowercased() ?? ""
+
+                        // Prefix match on name OR email
+                        if nameLower.hasPrefix(q) || emailLower.hasPrefix(q) {
+                            matched.append(doc.documentID)
+                            if matched.count >= limit { break }
+                        }
+                    }
+                    if matched.count >= limit { break }
+                }
+
+                await MainActor.run { self.foundUIDs = matched }
+            } catch {
+                print("❌ searchAcceptedConnections error: \(error.localizedDescription)")
+                await MainActor.run { self.foundUIDs = [] }
+            }
+        }
+    }
 }

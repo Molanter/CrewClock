@@ -226,7 +226,7 @@ struct CustomTabBar: View {
                     .allowsHitTesting(!isSearchExpanded)
                 
                 if isSearchExpanded {
-                    TextField("Search...", text: $searchText)
+                    TextField("Search People", text: $searchText)
                         .focused($isKeyboardActive)
                         .onChange(of: publishedVars.searchClock) { oldValue, newValue in
                             searchUserViewModel.searchUsers(with: newValue)

@@ -143,7 +143,8 @@ struct AddProjectView: View {
             }
             TextField("Search to add crew", text: $crewSearch)
                 .onChange(of: crewSearch) { oldValue, newValue in
-                    searchUserViewModel.searchUsers(with: newValue)
+                    searchUserViewModel.searchAcceptedConnections(matching: newValue)
+                    print("searchUserViewModel.foundUIDs: -- ", searchUserViewModel.foundUIDs)
                 }
             
             if !crewSearch.isEmpty {
@@ -158,12 +159,11 @@ struct AddProjectView: View {
         let me = userViewModel.user?.uid
 
         // sets for fast membership checks
-        let connectionSet = Set(userViewModel.user?.connections ?? [])
-        let crewSet       = Set(project.crew)
+        let crewSet = Set(project.crew)
 
         // results: in my connections, not already in crew, and not me
         let results = searchUserViewModel.foundUIDs.filter {
-            $0 != me && connectionSet.contains($0) && !crewSet.contains($0)
+            $0 != me && !crewSet.contains($0)
         }
 
         return VStack(alignment: .leading) {
