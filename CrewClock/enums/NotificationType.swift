@@ -8,11 +8,7 @@
 import SwiftUI
 
 enum NotificationType: String, Codable {
-    case connectInvite
-    case projectInvite
-    case taskAssigned
-    case commentMention
-    case scheduleUpdate
+    case connectInvite, connectionAccepted, projectInvite, taskAssigned, commentMention, scheduleUpdate
     
     var message: String {
         switch self {
@@ -26,6 +22,8 @@ enum NotificationType: String, Codable {
             return "mentioned you in the comment."
         case .scheduleUpdate:
             return "updated their schedule."
+        case .connectionAccepted:
+            return "accepted you invite to connect."
         }
     }
 }

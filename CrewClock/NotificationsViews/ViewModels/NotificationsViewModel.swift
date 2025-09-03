@@ -9,48 +9,61 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 
-class NotificationsViewModel: ObservableObject {
-    private var auth = Auth.auth()
-    private var db = Firestore.firestore()
+final class NotificationsViewModel: ObservableObject {
+    private let auth = Auth.auth()
+    private let db = Firestore.firestore()
 
-    @Published var tokensArray = [String]()
+    @Published var tokensArray: [String] = []
     @Published var notifications: [NotificationFB] = []
-    
-    func updateFcmToken(token: String){
-        guard let userId = auth.currentUser?.uid else { return }
-        let ref = db.collection("users").document(userId).collection("fcmTokens").document(token)
-        
-        ref.setData([:]) { error in
+
+    // MARK: - FCM Tokens
+
+    func updateFcmToken(token: String) {
+        #if targetEnvironment(simulator)
+        print("🧪 Simulator token detected; not storing: \(token)")
+        return
+        #endif
+
+        guard let uid = auth.currentUser?.uid else {
+            print("⚠️ updateFcmToken: no authenticated user")
+            return
+        }
+
+        let ref = db.collection("users").document(uid)
+            .collection("tokens")
+            .document(token)
+
+        ref.setData([
+            "platform": "ios",
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true) { error in
             if let error = error {
-                print("Error while updating FCM token: \(error)")
+                print("❌ Error updating FCM token: \(error.localizedDescription)")
             } else {
                 app.fcmToken = token
-                print("✅ FCM token updated!")
+                print("✅ Stored FCM token: \(token.prefix(12))…")
             }
         }
     }
-    
+
     func deleteFcmToken(userId: String, token: String) {
-        let ref = db.collection("users").document(userId)
-            .collection("fcmTokens").document(token)
-
-        ref.delete { err in
-            if let err = err {
-                print("Error removing FCM token: \(err)")
-            } else {
-                print("✅ FCM token removed: \(token)")
+        db.collection("users").document(userId)
+            .collection("tokens")
+            .document(token)
+            .delete { err in
+                if let err = err {
+                    print("❌ Error removing FCM token: \(err.localizedDescription)")
+                } else {
+                    print("🧹 Removed FCM token: \(token.prefix(12))…")
+                }
             }
-        }
     }
-    
-    //MARK: Notification
-    
-    /// Fetches FCM tokens by user UID and sends notification
-    func getFcmByUid(uid: String, notification: NotificationModel) {
 
-        // We don't read other users' fcmTokens from the client (rules forbid it).
-        // Just target the UID and let the server function look up tokens.
-        let updatedNotification = NotificationModel(
+    // MARK: - Notifications (Create)
+
+    /// Send to a single recipient UID (normalizes the model then delegates).
+    func getFcmByUid(uid: String, notification: NotificationModel) {
+        let normalized = NotificationModel(
             notificationId: notification.notificationId,
             title: notification.title,
             message: notification.message,
@@ -63,234 +76,129 @@ class NotificationsViewModel: ObservableObject {
             relatedId: notification.relatedId,
             imageUrl: notification.imageUrl
         )
-        self.sendNotification(updatedNotification)
+        sendNotification(normalized)
     }
-    
-    
+
+    /// Saves one Firestore doc per recipient; your Cloud Function (onCreate) will send the push.
     func sendNotification(_ notification: NotificationModel) {
+        let baseId = notification.notificationId.isEmpty ? UUID().uuidString : notification.notificationId
+        let recipients = notification.recipientUID
 
-        // Ensure we have a stable notificationId; if none provided, generate one.
-        let baseId: String
-        if !notification.notificationId.isEmpty {
-            baseId = notification.notificationId
-        } else {
-            baseId = UUID().uuidString
-        }
-
-        for recipientUID in notification.recipientUID {
-            var notificationData: [String: Any] = [
+        for recipientUID in recipients {
+            var data: [String: Any] = [
                 "notificationId": baseId,
                 "title": notification.title,
                 "message": notification.message,
                 "timestamp": Timestamp(date: notification.timestamp),
-                "recipientUID": [recipientUID],
+                "recipientUIDs": [recipientUID],            // ✅ plural array
+                "fromUID": notification.fromUID,
                 "isRead": notification.isRead,
                 "status": notification.status.rawValue,
                 "type": notification.type.rawValue,
-                "relatedId": notification.relatedId as Any,
-                "fromUID": notification.fromUID
+                "relatedId": notification.relatedId as Any
             ]
-
-            if let imageUrl = notification.imageUrl, imageUrl.starts(with: "http") {
-                notificationData["imageUrl"] = imageUrl
+            if let imageUrl = notification.imageUrl, imageUrl.hasPrefix("http") {
+                data["imageUrl"] = imageUrl
             }
 
-            Firestore.firestore()
-                .collection("notifications")
-                .document("\(baseId)_\(recipientUID)")
-                .setData(notificationData) { [weak self] error in
-                    if let error = error {
-                        print("❌ Error saving notification for \(recipientUID): \(error.localizedDescription)")
-                    } else {
-                        print("✅ Notification saved to Firestore for \(recipientUID)")
-                        self?.sendNotificationViaFunction(notification)
-                    }
+            let documentId = "\(baseId)_\(recipientUID)"
+            db.collection("notifications").document(documentId).setData(data) { error in
+                if let error = error {
+                    print("❌ Error saving notification for \(recipientUID): \(error.localizedDescription)")
+                } else {
+                    print("✅ Notification saved (docId=\(documentId)) — onCreate will send push")
                 }
+            }
         }
     }
-    
-    private func sendNotificationViaFunction(_ notification: NotificationModel) {
-        guard let url = URL(string: "https://us-central1-curchnote.cloudfunctions.net/sendNotification") else { return }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    // MARK: - Fetch
 
-        var body: [String: Any] = [
-            "title": notification.title,
-            "message": notification.message,
-            "recipientUIDs": notification.recipientUID,
-            "fromUID": notification.fromUID,
-            "type": notification.type.rawValue,
-            "relatedId": notification.relatedId,
-            "notificationId": notification.notificationId
-        ]
-
-        // Only add imageUrl if it is a valid URL string
-        if let imageUrl = notification.imageUrl,
-            !imageUrl.isEmpty,
-            imageUrl is String,
-            imageUrl.starts(with: "http") {
-            body["imageUrl"] = imageUrl
-        }
-
-        print("📦 Sending push payload:", body)
-
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-        } catch {
-            print("❌ Failed to serialize notification payload: \(error)")
+    /// Fetch notifications addressed to the current user.
+    func fetchNotifications(completion: @escaping ([NotificationFB]) -> Void) {
+        guard let uid = auth.currentUser?.uid else {
+            completion([])
             return
         }
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("❌ Error calling push function: \(error.localizedDescription)")
-            } else {
-                print("✅ Push function called")
-            }
-        }.resume()
-    }
-    
-//    private func sendPushNotification(to token: String, title: String, body: String) {
-//        let message: [String: Any] = [
-//            "to": token,
-//            "notification": [
-//                "title": title,
-//                "subtitle": "",
-//                "body": body,
-//                "image": "",
-//                "badge": 1
-//            ],
-//            "data": [
-//                "sound": "default",
-//                "link": ""
-//            ]
-//        ]
-//
-//        guard let url = URL(string: "https://fcm.googleapis.com/fcm/send") else { return }
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "POST"
-//        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-//        request.setValue("key=your_key", forHTTPHeaderField: "Authorization") // Replace with actual server key
-//
-//        do {
-//            let jsonData = try JSONSerialization.data(withJSONObject: message, options: [])
-//            request.httpBody = jsonData
-//
-//            URLSession.shared.dataTask(with: request) { data, response, error in
-//                if let error = error {
-//                    print("❌ Error sending push notification: \(error.localizedDescription)")
-//                } else if let data = data {
-//                    let responseString = String(data: data, encoding: .utf8)
-//                    print("✅ Push notification sent: \(responseString ?? "")")
-//                }
-//            }.resume()
-//        } catch {
-//            print("❌ Error serializing JSON for push notification: \(error.localizedDescription)")
-//        }
-//    }
-
-//    /// Triggers a push notification to a user by UID
-//    func triggerPushNotification(toUID uid: String, title: String, body: String) {
-//        db.collection("users")
-//            .document(uid)
-//            .getDocument { [weak self] snapshot, error in
-//                guard let self = self else { return }
-//
-//                if let error = error {
-//                    print("❌ Error fetching user document: \(error.localizedDescription)")
-//                    return
-//                }
-//
-//                guard let data = snapshot?.data(),
-//                      let token = data["token"] as? String, !token.isEmpty else {
-//                    print("❌ No FCM token found for user: \(uid)")
-//                    return
-//                }
-//
-//                self.sendPushNotification(to: token, title: title, body: body)
-//            }
-//    }
-//
-//    func sendNotification() {
-//        guard let url = URL(string: "https://us-central1-curchnote.cloudfunctions.net/updateBadgeCount") else {
-//            print("Invalid Cloud Function URL")
-//            return
-//        }
-//
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "POST"
-//        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-//
-//        let body: [String: Any] = [
-//            "userId": auth.currentUser?.uid ?? "",
-//            "badgeCount": 5
-//        ]
-//
-//        do {
-//            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-//        } catch {
-//            print("Error encoding JSON: \(error)")
-//            return
-//        }
-//
-//        URLSession.shared.dataTask(with: request) { data, response, error in
-//            if let error = error {
-//                print("Error sending notification: \(error)")
-//                return
-//            }
-//
-//            if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
-//                print("Notification sent successfully")
-//            } else {
-//                print("Error sending notification. Response: \(response.debugDescription)")
-//            }
-//        }.resume()
-//    }
-    
-    /// Fetch notifications where recipientUID contains the given uid
-    func fetchNotifications(completion: @escaping ([NotificationFB]) -> Void) {
-        guard let uid = auth.currentUser?.uid else {return}
-        
         db.collection("notifications")
-            .whereField("recipientUID", arrayContains: uid)
+            .whereField("recipientUIDs", arrayContains: uid)  // ✅ plural field
             .order(by: "timestamp", descending: true)
-            .getDocuments { (snapshot, error) in
+            .getDocuments { [weak self] snapshot, error in
                 if let error = error {
-                    print("Error fetching notifications: \(error.localizedDescription)")
+                    print("❌ Error fetching notifications: \(error.localizedDescription)")
                     completion([])
                     return
                 }
-                guard let documents = snapshot?.documents else {
-                    completion([])
-                    return
+
+                let docs = snapshot?.documents ?? []
+                let items = docs.map { NotificationFB(data: $0.data(), documentId: $0.documentID) }
+
+                DispatchQueue.main.async {
+                    self?.notifications = items
                 }
-                let notifications = documents.map { doc in
-                    NotificationFB(data: doc.data(), documentId: doc.documentID)
-                }
-                self.notifications = notifications
-                completion(notifications)
-                
-                print("✅ Notifications fetched succesfully :-:")
+
+                print("✅ Notifications fetched:", items.count)
+                completion(items)
             }
     }
-    
-    /// Updates a notification's status by its notificationId
-    func updateNotificationStatus(notificationId: String, newStatus: NotificationStatus, completion: ((Bool) -> Void)? = nil) {
+
+    // MARK: - Update status
+
+    /// Preferred: update by **documentId** ("<notificationId>_<recipientUID>").
+    func updateNotificationStatus(documentId: String,
+                                  newStatus: NotificationStatus,
+                                  completion: ((Bool) -> Void)? = nil) {
+        db.collection("notifications").document(documentId)
+            .updateData(["status": newStatus.rawValue]) { [weak self] error in
+                if let error = error {
+                    print("❌ Error updating notification (docId=\(documentId)): \(error.localizedDescription)")
+                    completion?(false)
+                } else {
+                    if let idx = self?.notifications.firstIndex(where: { $0.notificationId == documentId }) { // ✅ compare by documentId
+                        self?.notifications[idx].status = newStatus
+                    }
+                    print("✅ Notification status updated for docId=\(documentId)")
+                    completion?(true)
+                }
+            }
+    }
+
+    /// Back-compat: update by **notificationId** (looks up the current user's doc if needed).
+    func updateNotificationStatus(notificationId: String,
+                                  newStatus: NotificationStatus,
+                                  completion: ((Bool) -> Void)? = nil) {
         let ref = db.collection("notifications").document(notificationId)
         ref.updateData(["status": newStatus.rawValue]) { [weak self] error in
             if let error = error {
-                print("Error updating notification status: \(error.localizedDescription)")
-                completion?(false)
+                // Likely "No document to update" — fall back to query by fields.
+                print("ℹ️ Direct update failed (\(error.localizedDescription)), trying lookup by fields…")
+                guard let uid = self?.auth.currentUser?.uid else { completion?(false); return }
+
+                self?.db.collection("notifications")
+                    .whereField("notificationId", isEqualTo: notificationId)
+                    .whereField("recipientUIDs", arrayContains: uid)
+                    .limit(to: 1)
+                    .getDocuments { snap, qErr in
+                        if let qErr = qErr {
+                            print("❌ Lookup failed: \(qErr.localizedDescription)")
+                            completion?(false); return
+                        }
+                        guard let doc = snap?.documents.first else {
+                            print("❌ No notification doc found for id=\(notificationId) & user=\(uid)")
+                            completion?(false); return
+                        }
+                        self?.updateNotificationStatus(documentId: doc.documentID,
+                                                       newStatus: newStatus,
+                                                       completion: completion)
+                    }
             } else {
-                if let index = self?.notifications.firstIndex(where: { $0.notificationId == notificationId }) {
-                    self?.notifications[index].status = newStatus
+                if let idx = self?.notifications.firstIndex(where: { $0.notificationId == notificationId }) {
+                    self?.notifications[idx].status = newStatus
                 }
-                print("Notification status updated successfully!")
+                print("✅ Notification status updated for id=\(notificationId)")
                 completion?(true)
             }
         }
     }
-    
 }

@@ -13,7 +13,6 @@ struct ClockSearchView: View {
     @EnvironmentObject var searchUserViewModel: SearchUserViewModel
     @EnvironmentObject var userViewModel: UserViewModel
     @EnvironmentObject private var connectionsVM: ConnectionsViewModel
-    @EnvironmentObject var notificationsViewModel: NotificationsViewModel
     @EnvironmentObject var publishedVars: PublishedVariebles
     
     private var auth = Auth.auth()

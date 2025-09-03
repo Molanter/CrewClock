@@ -272,12 +272,12 @@ class ConnectionsViewModel: ObservableObject {
 
             let n = NotificationModel(
                 title: "You’re connected",
-                message: "\(self.user?.name ?? self.auth.currentUser?.displayName ?? "Someone") accepted your connection request.",
+                message: "\(self.user?.name ?? self.auth.currentUser?.displayName ?? "Someone") \(NotificationType.connectionAccepted.message)",
                 timestamp: Date(),
                 recipientUID: [notifyUid],
                 fromUID: self.user?.uid ?? self.auth.currentUser?.uid ?? "",
                 isRead: false,
-                type: .connectInvite,
+                type: .connectionAccepted,
                 relatedId: connection
             )
             self.notificationsVM.getFcmByUid(uid: notifyUid, notification: n)

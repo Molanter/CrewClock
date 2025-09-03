@@ -12,7 +12,7 @@ struct NotificationRowView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
     @EnvironmentObject private var connectionsVM: ConnectionsViewModel
     @EnvironmentObject private var projectViewModel: ProjectViewModel
-    @EnvironmentObject private var notificationViewModel: NotificationsViewModel
+    @EnvironmentObject private var notificationsViewModel: NotificationsViewModel
 
     let notification: NotificationFB
     var auth = Auth.auth()
@@ -37,7 +37,9 @@ struct NotificationRowView: View {
                 header
                 message
             }
-            buttons
+            if notification.type != .connectionAccepted && notification.type != .commentMention && notification.type != .scheduleUpdate {
+                buttons
+            }
         }
         .padding(K.UI.padding*2)
         .background {
@@ -63,7 +65,7 @@ struct NotificationRowView: View {
     }
     
     private var message: some View {
-        Text(notification.type.message)
+        Text(notification.message)
             .font(.body)
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
@@ -71,31 +73,39 @@ struct NotificationRowView: View {
     
     private var buttons: some View {
         HStack(alignment: .center, spacing: 10) {
-            Button {
-                secondAction(notification.type)
-            } label: {
-                Text("Reject")
-                    .padding(K.UI.padding)
-                    .frame(maxWidth: .infinity)
-                    .background {
-                        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-                            .fill(Color.red)
-                    }
-            }
-            .buttonStyle(.plain)
-            Button {
-                mainAction(notification.type)
-            } label: {
-                Text("Connect")
-                    .padding(K.UI.padding)
-                    .frame(maxWidth: .infinity)
-                    .background {
-                        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-                            .fill(K.Colors.accent)
-                    }
-            }
-            .buttonStyle(.plain)
+            secondaryButton
+            mainButton
         }
+    }
+    
+    private var secondaryButton: some View {
+        Button {
+            secondAction(notification.type)
+        } label: {
+            Text("Reject")
+                .padding(K.UI.padding)
+                .frame(maxWidth: .infinity)
+                .background {
+                    RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+                        .fill(Color.red)
+                }
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private var mainButton: some View {
+        Button {
+            mainAction(notification.type)
+        } label: {
+            Text("Connect")
+                .padding(K.UI.padding)
+                .frame(maxWidth: .infinity)
+                .background {
+                    RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+                        .fill(K.Colors.accent)
+                }
+        }
+        .buttonStyle(.plain)
     }
     
     private func appear() {
@@ -113,12 +123,14 @@ struct NotificationRowView: View {
                 connectFunc()
             case .projectInvite:
                 projectViewModel.addCrewMember(documentId: notification.relatedId, crewMember: notification.relatedId)
-                notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
+                notificationsViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
             case .taskAssigned:
                 return
             case .commentMention:
                 return
             case .scheduleUpdate:
+                return
+            case .connectionAccepted:
                 return
             }
         }
@@ -128,14 +140,16 @@ struct NotificationRowView: View {
         if notification.status != .completed, notification.status != .cancelled {
             switch type {
             case .connectInvite:
-                notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
+                notificationsViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
             case .projectInvite:
-                notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
+                notificationsViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
             case .taskAssigned:
-                notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
+                notificationsViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
             case .commentMention:
                 return
             case .scheduleUpdate:
+                return
+            case .connectionAccepted:
                 return
             }
         }
@@ -143,7 +157,7 @@ struct NotificationRowView: View {
     
     private func connectFunc() {
         connectionsVM.acceptConnection(from: notification.fromUID, notificationId: notification.notificationId)
-        notificationViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
+        notificationsViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
     }
 
 }
