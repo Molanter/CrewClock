@@ -132,6 +132,8 @@ struct NotificationRowView: View {
                 return
             case .connectionAccepted:
                 return
+            case .test:
+                return
             }
         }
     }
@@ -150,6 +152,8 @@ struct NotificationRowView: View {
             case .scheduleUpdate:
                 return
             case .connectionAccepted:
+                return
+            case .test:
                 return
             }
         }

@@ -1,319 +1,207 @@
-const functions = require("firebase-functions");
-const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
-const { google } = require("googleapis");
-const serviceAccount = require("./service-account.json");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 
-admin.initializeApp();
+// Optional: set global options (you can rely on per-function region as well)
+/// const { setGlobalOptions } = require("firebase-functions/v2");
+/// setGlobalOptions({ region: "us-central1" });
 
-const sheets = google.sheets("v4");
-const auth = new google.auth.JWT(
-    serviceAccount.client_email,
-    null,
-    serviceAccount.private_key,
-    ["https://www.googleapis.com/auth/spreadsheets"]
-);
-
-const getSpreadsheetId = (data) => data.spreadsheetId;
-
-exports.addToSheet = onDocumentCreated(
-    {
-        region: "us-central1",
-        document: "logsForSheets/{logId}"
-    },
-    async (event) => {
-        const snap = event.data;
-        const data = snap.data();
-
-        const formattedDate = data.date?._seconds
-            ? new Date(data.date._seconds * 1000).toLocaleDateString("en-US", {
-                year: "numeric", month: "short", day: "numeric"
-              })
-            : "";
-
-        const timeStarted = data.timeStarted?._seconds
-            ? new Date(data.timeStarted._seconds * 1000).toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: true
-              })
-            : data.timeStarted || "";
-
-        const timeFinished = data.timeFinished?._seconds
-            ? new Date(data.timeFinished._seconds * 1000).toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: true
-              })
-            : data.timeFinished || "";
-
-        const row = [
-            data.projectName || "",
-            data.comment || "",
-            formattedDate,
-            timeStarted,
-            timeFinished,
-            (data.crewUID || []).join(", "),
-            data.expenses || 0
-        ];
-
-        await auth.authorize();
-
-        const spreadsheetId = getSpreadsheetId(data);
-        // Fetch spreadsheet metadata to get the first sheet name
-        const spreadsheetMeta = await sheets.spreadsheets.get({
-            spreadsheetId,
-            auth
-        });
-        const sheetName = spreadsheetMeta.data.sheets?.[0]?.properties?.title || "Sheet1";
-        console.log("➡️ Data row:", row);
-        console.log("➡️ Spreadsheet ID:", spreadsheetId);
-        await sheets.spreadsheets.values.append({
-            spreadsheetId,
-            range: `${sheetName}!A1`,
-            valueInputOption: "USER_ENTERED",
-            auth,
-            requestBody: {
-                values: [row]
-            }
-        });
-
-        // Get actual number of filled rows in column A
-        const res = await sheets.spreadsheets.values.get({
-            spreadsheetId,
-            range: `${sheetName}!A:A`,
-            auth
-        });
-        const appendedRowCount = res.data.values ? res.data.values.length : 1;
-
-        // Save the row number back to Firestore
-        const logRef = admin.firestore().doc(`logs/${snap.id}`);
-        await logRef.update({ row: appendedRowCount });
-
-        console.log("✅ Row added to sheet");
-        return null;
-    }
-);
-
-exports.updateSheetRow = onDocumentUpdated(
-    {
-        region: "us-central1",
-        document: "logsForSheets/{logId}"
-    },
-    async (event) => {
-        const snapAfter = event.data.after;
-        const data = snapAfter.data();
-
-        const spreadsheetId = getSpreadsheetId(data);
-        const rowNumber = Number(data.row);
-
-        if (
-            !spreadsheetId ||
-            typeof rowNumber !== "number" ||
-            rowNumber <= 0 ||
-            isNaN(rowNumber)
-        ) {
-            console.error("❌ Missing or invalid spreadsheet ID or row number", {
-                spreadsheetId,
-                rowNumber
-            });
-            return null;
-        }
-
-        const formattedDate = data.date?._seconds
-            ? new Date(data.date._seconds * 1000).toLocaleDateString("en-US", {
-                  year: "numeric", month: "short", day: "numeric"
-              })
-            : "";
-
-        const timeStarted = data.timeStarted?._seconds
-            ? new Date(data.timeStarted._seconds * 1000).toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: true
-              })
-            : data.timeStarted || "";
-
-        const timeFinished = data.timeFinished?._seconds
-            ? new Date(data.timeFinished._seconds * 1000).toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: true
-              })
-            : data.timeFinished || "";
-
-        const row = [
-            data.projectName || "",
-            data.comment || "",
-            formattedDate,
-            timeStarted,
-            timeFinished,
-            (data.crewUID || []).join(", "),
-            data.expenses || 0
-        ];
-
-        await auth.authorize();
-
-        const spreadsheetMeta = await sheets.spreadsheets.get({
-            spreadsheetId,
-            auth
-        });
-        const sheetName = spreadsheetMeta.data.sheets?.[0]?.properties?.title || "Sheet1";
-
-        const range = `${sheetName}!A${rowNumber}:G${rowNumber}`;
-
-        await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range,
-            valueInputOption: "USER_ENTERED",
-            auth,
-            requestBody: {
-                values: [row]
-            }
-        });
-
-        console.log(`✅ Updated row ${rowNumber} in spreadsheet`);
-        return null;
-    }
-);
-
-exports.deleteSheetRow = onDocumentDeleted(
-    {
-        region: "us-central1",
-        document: "logsForSheets/{logId}"
-    },
-    async (event) => {
-        const data = event.data;
-        const spreadsheetId = getSpreadsheetId(data);
-        const rowNumber = data.row;
-
-        if (
-            !spreadsheetId ||
-            typeof rowNumber !== "number" ||
-            rowNumber <= 0 ||
-            isNaN(rowNumber)
-        ) {
-            console.error("❌ Missing or invalid spreadsheet ID or row number", {
-                spreadsheetId,
-                rowNumber
-            });
-            return null;
-        }
-
-        await auth.authorize();
-
-        const spreadsheetMeta = await sheets.spreadsheets.get({
-            spreadsheetId,
-            auth
-        });
-        const sheetName = spreadsheetMeta.data.sheets?.[0]?.properties?.title || "Sheet1";
-
-        const deleteRequest = {
-            spreadsheetId,
-            auth,
-            requestBody: {
-                requests: [
-                    {
-                        deleteDimension: {
-                            range: {
-                                sheetId: spreadsheetMeta.data.sheets[0].properties.sheetId,
-                                dimension: "ROWS",
-                                startIndex: rowNumber - 1,
-                                endIndex: rowNumber
-                            }
-                        }
-                    }
-                ]
-            }
-        };
-
-        await sheets.spreadsheets.batchUpdate(deleteRequest);
-        console.log(`🗑️ Deleted row ${rowNumber} from spreadsheet`);
-        return null;
-    }
-);
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 exports.sendPushNotification = onDocumentCreated(
   {
     region: "us-central1",
-    document: "notifications/{notificationId}"
+    document: "notifications/{notificationId}",
   },
   async (event) => {
     const snap = event.data;
-    const data = snap.data();
+    const data = snap.data() || {};
 
-    const title = data.title;
-    const body = data.body || data.message;
+    // ---- Normalize required fields ----
+    const title = data.title || "";
+    const body = data.body || data.message || "";
     const imageUrl = data.imageUrl || "";
     const link = data.link || "";
-    const badgeCount = data.badge || 1;
+    const badgeCount = Number.isFinite(Number(data.badge)) ? Number(data.badge) : 1;
 
+    // Prefer `recipientUIDs` (array), but also support legacy keys.
     let recipients = [];
-    if (Array.isArray(data.recipients)) {
+    if (Array.isArray(data.recipientUIDs) && data.recipientUIDs.length) {
+      recipients = data.recipientUIDs;
+    } else if (Array.isArray(data.recipients) && data.recipients.length) {
       recipients = data.recipients;
-    } else if (Array.isArray(data.recipientUID)) {
+    } else if (Array.isArray(data.recipientUID) && data.recipientUID.length) {
       recipients = data.recipientUID;
-    } else if (typeof data.recipientUID === "string") {
-      recipients = [data.recipientUID];
+    } else if (typeof data.recipientUID === "string" && data.recipientUID.trim()) {
+      recipients = [data.recipientUID.trim()];
     }
 
+    // Debug: log what we actually received (first few chars only for safety)
+    console.log("🔎 sendPushNotification payload keys:", Object.keys(data));
+    console.log("🔎 recipients:", recipients);
+
     if (!Array.isArray(recipients) || recipients.length === 0 || !title || !body) {
-      console.error("❌ Missing required parameters in notification document");
+      console.error("❌ Missing required parameters in notification document", {
+        hasTitle: !!title,
+        hasBody: !!body,
+        recipientsCount: Array.isArray(recipients) ? recipients.length : 0,
+      });
       return null;
     }
 
+    // ---- Collect tokens for all recipients ----
     const tokensToSend = [];
 
     for (const uid of recipients) {
-      const tokensSnapshot = await admin.firestore()
-        .collection("users")
-        .doc(uid)
-        .collection("fcmTokens")
-        .get();
+      // Support both collections: 'tokens' (preferred) and legacy 'fcmTokens'
+      const userDoc = admin.firestore().collection("users").doc(uid);
 
-      tokensSnapshot.forEach(doc => {
+      const [tokensSnap, legacySnap] = await Promise.all([
+        userDoc.collection("tokens").get(),
+        userDoc.collection("fcmTokens").get().catch(() => ({ empty: true, forEach: () => {} })), // ignore error if collection doesn't exist
+      ]);
+
+      tokensSnap.forEach((doc) => {
         const token = doc.id;
-        if (token) {
-          tokensToSend.push(token);
-        }
+        if (token) tokensToSend.push(token);
       });
+
+      if (legacySnap && !legacySnap.empty) {
+        legacySnap.forEach((doc) => {
+          const token = doc.id;
+          if (token) tokensToSend.push(token);
+        });
+      }
     }
 
-    const sendPromises = tokensToSend.map(token => {
-      const notificationPayload = {
-        title: title,
-        body: body
-      };
-      if (imageUrl && typeof imageUrl === "string" && imageUrl.startsWith("http")) {
-        notificationPayload.imageUrl = imageUrl;
-      }
+    // De-duplicate tokens
+    const uniqueTokens = [...new Set(tokensToSend)];
+    if (uniqueTokens.length === 0) {
+      console.log("ℹ️ No tokens found for recipients:", recipients);
+      return null;
+    }
+
+    console.log(`📨 Will send to ${uniqueTokens.length} token(s).`);
+
+    // ---- Build the base message parts ----
+    const baseNotification = {
+      title,
+      body,
+      ...(imageUrl && typeof imageUrl === "string" && imageUrl.startsWith("http") ? { imageUrl } : {}),
+    };
+
+    // Per-token send with result logging and pruning stale tokens
+    const sendPromises = uniqueTokens.map((token) => {
       const message = {
-        token: token,
-        notification: notificationPayload,
+        token,
+        notification: baseNotification,
         data: {
-          link: link,
-          sound: "default"
+          link,
+          sound: "default",
+          notificationId: String(data.notificationId || snap.id),
+          type: String(data.type || ""),
+          fromUID: String(data.fromUID || ""),
+          relatedId: String(data.relatedId || ""),
         },
         apns: {
           payload: {
             aps: {
               badge: badgeCount,
-              sound: "default"
-            }
-          }
-        }
+              sound: "default",
+            },
+          },
+        },
       };
 
-      return admin.messaging().send(message);
+      return admin
+        .messaging()
+        .send(message)
+        .then((messageId) => ({ token, success: true, messageId }))
+        .catch((error) => ({ token, success: false, error }));
     });
 
-    try {
-      const responses = await Promise.all(sendPromises);
-      console.log("✅ Notifications sent:", responses);
-    } catch (error) {
-      console.error("❌ Error sending one or more notifications:", error);
+    const results = await Promise.all(sendPromises);
+
+    let successCount = 0;
+    const invalidTokens = [];
+
+    results.forEach((r) => {
+      if (r.success) {
+        successCount++;
+        console.log("✅ Sent", r.token.slice(0, 12) + "…", "msgId:", r.messageId);
+      } else {
+        const code = r.error?.code;
+        console.warn("❌ Failed", r.token.slice(0, 12) + "…", code, r.error?.message);
+        if (
+          code === "messaging/registration-token-not-registered" ||
+          code === "messaging/invalid-registration-token"
+        ) {
+          invalidTokens.push(r.token);
+        }
+      }
+    });
+
+    // Mark dead tokens under each known recipient (do NOT delete)
+    if (invalidTokens.length) {
+      console.log("🚩 Marking", invalidTokens.length, "invalid token(s) for recipients (keeping docs):", recipients);
+
+      async function flagTokenForUID(uid, token, failure) {
+        const userDoc = admin.firestore().collection("users").doc(uid);
+        const refs = [
+          userDoc.collection("tokens").doc(token),
+          userDoc.collection("fcmTokens").doc(token),
+        ];
+
+        const updates = refs.map(async (ref) => {
+          try {
+            const snap = await ref.get();
+            if (snap.exists) {
+              await ref.set(
+                {
+                  disabled: true,                // <- soft-disable (keep token)
+                  lastFailedAt: admin.firestore.FieldValue.serverTimestamp(),
+                  lastFailureCode: failure?.code || "",
+                  lastFailureMessage: failure?.message || "",
+                  failureCount: admin.firestore.FieldValue.increment(1),
+                },
+                { merge: true }
+              );
+              console.log(`🚩 Flagged invalid token (kept) for uid=${uid} at ${ref.path}`);
+            } else {
+              // Create a doc to record the failure state for observability
+              await ref.set(
+                {
+                  disabled: true,
+                  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                  lastFailedAt: admin.firestore.FieldValue.serverTimestamp(),
+                  lastFailureCode: failure?.code || "",
+                  lastFailureMessage: failure?.message || "",
+                  failureCount: 1,
+                },
+                { merge: true }
+              );
+              console.log(`🆕 Created flagged token doc for uid=${uid} at ${ref.path}`);
+            }
+          } catch (e) {
+            console.warn(`⚠️ Failed flagging ${ref.path}:`, e.message);
+          }
+        });
+
+        await Promise.all(updates);
+      }
+
+      for (const bad of invalidTokens) {
+        // Find the failure object for this token from results (if present)
+        const failure = results.find((r) => !r.success && r.token === bad)?.error || null;
+        await Promise.all(recipients.map((uid) => flagTokenForUID(uid, bad, failure)));
+      }
+
+      // Optional: if you ever want to hard-delete instead, set an env var:
+      // if (process.env.PRUNE_INVALID_TOKENS === "true") { ...delete logic here... }
     }
 
+    console.log(`📤 Done. success=${successCount} fail=${results.length - successCount}`);
     return null;
   }
 );

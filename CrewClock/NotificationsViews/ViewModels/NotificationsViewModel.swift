@@ -84,32 +84,81 @@ final class NotificationsViewModel: ObservableObject {
         let baseId = notification.notificationId.isEmpty ? UUID().uuidString : notification.notificationId
         let recipients = notification.recipientUID
 
-        for recipientUID in recipients {
-            var data: [String: Any] = [
-                "notificationId": baseId,
-                "title": notification.title,
-                "message": notification.message,
-                "timestamp": Timestamp(date: notification.timestamp),
-                "recipientUIDs": [recipientUID],            // ✅ plural array
-                "fromUID": notification.fromUID,
-                "isRead": notification.isRead,
-                "status": notification.status.rawValue,
-                "type": notification.type.rawValue,
-                "relatedId": notification.relatedId as Any
-            ]
-            if let imageUrl = notification.imageUrl, imageUrl.hasPrefix("http") {
-                data["imageUrl"] = imageUrl
+        if recipients.isEmpty {
+            print("❌ No recipients — not writing notification.")
+            return
+        }
+
+        for uid in recipients {
+            guard let data = buildNotificationData(baseId: baseId, recipientUID: uid, notification: notification) else {
+                continue // skip invalid payloads
             }
 
-            let documentId = "\(baseId)_\(recipientUID)"
+            let documentId = "\(baseId)_\(uid)"
             db.collection("notifications").document(documentId).setData(data) { error in
                 if let error = error {
-                    print("❌ Error saving notification for \(recipientUID): \(error.localizedDescription)")
+                    print("❌ Error saving notification for \(uid): \(error.localizedDescription)")
                 } else {
                     print("✅ Notification saved (docId=\(documentId)) — onCreate will send push")
                 }
             }
         }
+    }
+
+    /// Build and validate the exact schema your onCreate function expects.
+    private func buildNotificationData(
+        baseId: String,
+        recipientUID: String,
+        notification: NotificationModel
+    ) -> [String: Any]? {
+
+        // Determine sender: prefer auth user; fallback to model's fromUID
+        let currentUID = auth.currentUser?.uid ?? notification.fromUID
+
+        // Normalize strings
+        let title = notification.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = notification.message.trimmingCharacters(in: .whitespacesAndNewlines)
+        let typeString = notification.type.rawValue
+        let recipient = recipientUID.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Validate requireds (match server expectations)
+        var missing: [String] = []
+        if baseId.isEmpty { missing.append("notificationId") }
+        if title.isEmpty { missing.append("title") }
+        if message.isEmpty { missing.append("message") }
+        if recipient.isEmpty { missing.append("recipientUID") }
+        if currentUID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { missing.append("fromUID") }
+        if typeString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { missing.append("type") }
+
+        if !missing.isEmpty {
+            print("❌ Missing required fields: \(missing.joined(separator: ", ")) — aborting write.")
+            return nil
+        }
+
+        var data: [String: Any] = [
+            "notificationId": baseId,
+            "title": title,
+            "message": message,
+            "timestamp": FieldValue.serverTimestamp(),   // server time is safest for backend validation
+            "recipientUIDs": [recipient],               // plural array (non-empty)
+            "fromUID": currentUID,
+            "isRead": notification.isRead,
+            "status": notification.status.rawValue,
+            "type": typeString
+        ]
+
+        // relatedId is a non-optional String in your model (compile error showed that),
+        // so just check emptiness.
+        let related = notification.relatedId
+        if !related.isEmpty {
+            data["relatedId"] = related
+        }
+
+        if let url = notification.imageUrl, url.hasPrefix("http") {
+            data["imageUrl"] = url
+        }
+
+        return data
     }
 
     // MARK: - Fetch
@@ -155,7 +204,8 @@ final class NotificationsViewModel: ObservableObject {
                     print("❌ Error updating notification (docId=\(documentId)): \(error.localizedDescription)")
                     completion?(false)
                 } else {
-                    if let idx = self?.notifications.firstIndex(where: { $0.notificationId == documentId }) { // ✅ compare by documentId
+                    // ✅ compare by documentId (not notificationId)
+                    if let idx = self?.notifications.firstIndex(where: { $0.notificationId == documentId }) {
                         self?.notifications[idx].status = newStatus
                     }
                     print("✅ Notification status updated for docId=\(documentId)")

@@ -171,7 +171,7 @@ struct SettingsTabView: View {
             recipientUID: [uid],
             fromUID: userViewModel.user?.uid ?? user?.uid ?? "",
             isRead: false,
-            type: .connectInvite,
+            type: .test,
             relatedId: uid
         )
         
