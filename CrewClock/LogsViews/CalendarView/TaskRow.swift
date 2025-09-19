@@ -91,7 +91,9 @@ struct TaskRow: View {
             }
         }
         .background {
-            background
+            if !isEmpty {
+                background
+            }
         }
     }
     

@@ -23,19 +23,14 @@ struct SettingsTabView: View {
 
                 headerScroll
                 
-                Section(header: Text("Time Tracking")) {
+                Section(header: Text("Temas")) {
+                    NavigationLink("Create a Team") { CreateTeamView() }
+                    NavigationLink("My Teams") { MyTeamsView() }
+                }
+                
+                Section(header: Text("Settings")) {
                     NavigationLink("Preferences", destination: Text("Time Tracking Preferences View"))
-                }
-
-                Section(header: Text("Google Spreadsheet")) {
                     NavigationLink("Linked Spreadsheet", destination: Text("Spreadsheet Settings View"))
-                }
-
-                Section(header: Text("Notifications")) {
-                    NavigationLink("Notification Settings", destination: NotificationsView())
-                }
-
-                Section(header: Text("Appearance")) {
                     NavigationLink {
                         Text("Appearance Settings View")
                     } label: {
@@ -43,6 +38,10 @@ struct SettingsTabView: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
                     }
+                }
+
+                Section(header: Text("Notifications")) {
+                    NavigationLink("Notifications list", destination: NotificationsView())
                 }
 
                 Section(header: Text("Help & Support")) {
@@ -80,6 +79,13 @@ struct SettingsTabView: View {
                 }
             }
             .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink(destination: NotificationsView()) {
+                        Image(systemName: "bell")
+                    }
+                }
+            }
         }
     }
     

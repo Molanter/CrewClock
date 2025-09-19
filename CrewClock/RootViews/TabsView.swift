@@ -91,10 +91,10 @@ struct TabsView: View {
                     }
             }
         }
-//        .tabViewBottomAccessory {
-//            WorkingFooterView()
-//        }
-//        .tabBarMinimizeBehavior(.onScrollDown)
+        .tabViewBottomAccessory {
+            WorkingFooterView()
+        }
+        .tabBarMinimizeBehavior(.onScrollDown)
     }
     
 //    //MARK: Tab Items

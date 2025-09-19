@@ -1,6 +1,9 @@
 const admin = require("firebase-admin");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 
+const { onCall } = require("firebase-functions/v2/https");
+
+
 // Optional: set global options (you can rely on per-function region as well)
 /// const { setGlobalOptions } = require("firebase-functions/v2");
 /// setGlobalOptions({ region: "us-central1" });
@@ -205,3 +208,248 @@ exports.sendPushNotification = onDocumentCreated(
     return null;
   }
 );
+
+// --- createUserAndInvite ---
+// Callable function to create (or fetch) a user by email and invite them to a team.
+// Returns { email, uid, tempPassword, appDownloadURL }
+exports.createUserAndInvite = onCall({ region: "us-central1" }, async (request) => {
+  try {
+    // Require auth
+    if (!request.auth) {
+      throw new Error("unauthenticated");
+    }
+
+    const body = request.data || {};
+    const emailRaw = typeof body.email === "string" ? body.email : "";
+    const teamId = typeof body.teamId === "string" ? body.teamId : "";
+    const role = typeof body.role === "string" ? body.role : "member";
+
+    const email = emailRaw.toLowerCase().trim();
+    const allowedRoles = new Set(["owner", "admin", "member"]);
+
+    if (!email || !teamId) {
+      return { ok: false, code: "invalid-argument", message: "email and teamId are required" };
+    }
+    if (!allowedRoles.has(role)) {
+      return { ok: false, code: "invalid-argument", message: "invalid role" };
+    }
+
+    // Optional: verify the team exists
+    const teamRef = admin.firestore().collection("teams").doc(teamId);
+    const teamSnap = await teamRef.get();
+    if (!teamSnap.exists) {
+      return { ok: false, code: "not-found", message: "team does not exist" };
+    }
+
+    // Generate a temp password (simple but sufficient for temporary use)
+    const tempPassword = Math.random().toString(36).slice(-10) + "1!";
+
+    // Create or get user
+    let uid;
+    try {
+      const existing = await admin.auth().getUserByEmail(email);
+      uid = existing.uid;
+    } catch (e) {
+      const created = await admin.auth().createUser({
+        email,
+        password: tempPassword,
+        emailVerified: false,
+        disabled: false,
+      });
+      uid = created.uid;
+    }
+
+    // Write membership docs
+    const db = admin.firestore();
+    const batch = db.batch();
+
+    // Team member subcollection
+    const memberRef = teamRef.collection("members").doc(uid);
+    batch.set(
+      memberRef,
+      {
+        role,
+        status: "invited",
+        addedAt: admin.firestore.FieldValue.serverTimestamp(),
+        email,
+      },
+      { merge: true }
+    );
+
+    // Per-user mirror under /users/{uid}/teams/{teamId}
+    const userTeamRef = db.collection("users").doc(uid).collection("teams").doc(teamId);
+    batch.set(
+      userTeamRef,
+      {
+        role,
+        status: "invited",
+        teamRef: teamRef,
+      },
+      { merge: true }
+    );
+
+    await batch.commit();
+
+    // Skipping server-side email. Credentials returned to client for manual sharing.
+
+    return {
+      ok: true,
+      email,
+      uid,
+      tempPassword,
+      appDownloadURL: "",
+    };
+  } catch (err) {
+    console.error("createUserAndInvite error:", err);
+    // Normalize error shape
+    const code = err && err.message === "unauthenticated" ? "unauthenticated" : "internal";
+    return { ok: false, code, message: err?.message || String(err) };
+  }
+});
+
+// --- helpers for team role checks ---
+async function getMemberRole(teamId, uid) {
+  const snap = await admin
+    .firestore()
+    .collection("teams").doc(teamId)
+    .collection("members").doc(uid)
+    .get();
+  return snap.exists ? (snap.get("role") || "member") : null;
+}
+
+async function assertAdminOrOwner(teamId, callerUid) {
+  const role = await getMemberRole(teamId, callerUid);
+  if (role !== "owner" && role !== "admin") {
+    const err = new Error("permission-denied");
+    err.code = "permission-denied";
+    throw err;
+  }
+}
+
+// --- resendInvite ---
+// Regenerates a temporary password for an invited/active member and returns credentials.
+// Input: { teamId, email } OR { teamId, uid }
+// Only owner/admin may call.
+exports.resendInvite = onCall({ region: "us-central1" }, async (request) => {
+  try {
+    if (!request.auth) {
+      throw new Error("unauthenticated");
+    }
+
+    const data = request.data || {};
+    const teamId = String(data.teamId || "").trim();
+    const emailInput = typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
+    const uidInput = typeof data.uid === "string" ? data.uid.trim() : "";
+
+    if (!teamId || (!emailInput && !uidInput)) {
+      return { ok: false, code: "invalid-argument", message: "teamId and (email or uid) required" };
+    }
+
+    const callerUid = request.auth.uid;
+    await assertAdminOrOwner(teamId, callerUid);
+
+    // Resolve uid/email
+    let uid = uidInput;
+    let email = emailInput;
+    if (!uid && email) {
+      try {
+        const u = await admin.auth().getUserByEmail(email);
+        uid = u.uid; // may exist
+      } catch (_) { /* user may not exist yet */ }
+    }
+    if (!email && uid) {
+      try {
+        const u = await admin.auth().getUser(uid);
+        email = (u.email || "").toLowerCase();
+      } catch (_) { /* ignore */ }
+    }
+
+    // If user does not exist, create as in first invite
+    let createdNow = false;
+    if (!uid) {
+      if (!email) {
+        return { ok: false, code: "not-found", message: "user not found and no email provided" };
+      }
+      const tempPassword = Math.random().toString(36).slice(-10) + "1!";
+      const created = await admin.auth().createUser({ email, password: tempPassword, emailVerified: false, disabled: false });
+      uid = created.uid;
+      createdNow = true;
+
+      // ensure membership exists as invited
+      const db = admin.firestore();
+      const teamRef = db.collection("teams").doc(teamId);
+      const batch = db.batch();
+      batch.set(teamRef.collection("members").doc(uid), { role: "member", status: "invited", email }, { merge: true });
+      batch.set(db.collection("users").doc(uid).collection("teams").doc(teamId), { role: "member", status: "invited", teamRef }, { merge: true });
+      await batch.commit();
+
+      return { ok: true, email, uid, tempPassword, created: true };
+    }
+
+    // User exists: rotate temp password
+    const tempPassword = Math.random().toString(36).slice(-10) + "1!";
+    await admin.auth().updateUser(uid, { password: tempPassword });
+
+    // Touch membership to ensure status is at least invited
+    const db = admin.firestore();
+    const teamRef = db.collection("teams").doc(teamId);
+    await teamRef.collection("members").doc(uid).set({ status: "invited", email }, { merge: true });
+    await db.collection("users").doc(uid).collection("teams").doc(teamId).set({ status: "invited", teamRef }, { merge: true });
+
+    // Send re-invite email with rotated temp password (if SendGrid configured)
+    // Skipping server-side email. Credentials returned to client for manual sharing.
+    return { ok: true, email, uid, tempPassword, created: createdNow };
+  } catch (err) {
+    console.error("resendInvite error:", err);
+    const code = err?.code === "permission-denied" ? "permission-denied" : (err?.message === "unauthenticated" ? "unauthenticated" : "internal");
+    return { ok: false, code, message: err?.message || String(err) };
+  }
+});
+
+// --- setMemberRole ---
+// Promotes/demotes a member's role within a team. Input: { teamId, targetUid, role }
+// Only owner/admin may call. Owner cannot demote themselves here (to prevent orphan teams).
+exports.setMemberRole = onCall({ region: "us-central1" }, async (request) => {
+  try {
+    if (!request.auth) {
+      throw new Error("unauthenticated");
+    }
+
+    const data = request.data || {};
+    const teamId = String(data.teamId || "").trim();
+    const targetUid = String(data.targetUid || "").trim();
+    const role = String(data.role || "").trim();
+
+    const allowed = new Set(["owner", "admin", "member"]);
+    if (!teamId || !targetUid || !allowed.has(role)) {
+      return { ok: false, code: "invalid-argument", message: "teamId, targetUid and valid role required" };
+    }
+
+    const callerUid = request.auth.uid;
+    await assertAdminOrOwner(teamId, callerUid);
+
+    // Prevent removing the last owner: if changing away from owner, ensure another owner exists or caller is owner
+    const db = admin.firestore();
+    const membersSnap = await db.collection("teams").doc(teamId).collection("members").get();
+
+    const owners = membersSnap.docs.filter(d => (d.get("role") || "member") === "owner").map(d => d.id);
+
+    if (targetUid === callerUid && owners.length === 1 && role !== "owner") {
+      return { ok: false, code: "failed-precondition", message: "cannot demote the last owner" };
+    }
+
+    // Apply role
+    const memberRef = db.collection("teams").doc(teamId).collection("members").doc(targetUid);
+    await memberRef.set({ role }, { merge: true });
+
+    // Mirror role to user doc if exists
+    const userTeamRef = db.collection("users").doc(targetUid).collection("teams").doc(teamId);
+    await userTeamRef.set({ role }, { merge: true });
+
+    return { ok: true };
+  } catch (err) {
+    console.error("setMemberRole error:", err);
+    const code = err?.code === "permission-denied" ? "permission-denied" : (err?.message === "unauthenticated" ? "unauthenticated" : "internal");
+    return { ok: false, code, message: err?.message || String(err) };
+  }
+});

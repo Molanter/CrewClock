@@ -134,6 +134,8 @@ struct NotificationRowView: View {
                 return
             case .test:
                 return
+            case .teamInite:
+                return
             }
         }
     }
@@ -154,6 +156,8 @@ struct NotificationRowView: View {
             case .connectionAccepted:
                 return
             case .test:
+                return
+            case .teamInite:
                 return
             }
         }

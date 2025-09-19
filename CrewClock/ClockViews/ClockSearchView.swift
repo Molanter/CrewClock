@@ -60,13 +60,13 @@ struct ClockSearchView: View {
         HStack(alignment: .center) {
             UserRowView(uid: uid)
             Spacer()
-//            if userViewModel.user?.connections.contains(uid) == true {
-//                Text("Connected")
-//                    .foregroundStyle(.secondary)
-//            } else if sentInvites.contains(uid) {
-//                Text("Sent")
-//                    .foregroundStyle(.gray)
-//            } else {
+            if userViewModel.user?.connections.contains(uid) == true {
+                Text("Connected")
+                    .foregroundStyle(.secondary)
+            } else if sentInvites.contains(uid) {
+                Text("Sent")
+                    .foregroundStyle(.gray)
+            } else {
                 Button {
                     self.connectWithPerson(uid)
                 } label: {
@@ -74,7 +74,7 @@ struct ClockSearchView: View {
                         .foregroundStyle(K.Colors.accent)
                 }
                 .buttonStyle(.plain)
-//            }
+            }
         }
     }
     

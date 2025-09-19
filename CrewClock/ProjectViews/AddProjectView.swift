@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 import FirebaseAuth
 
 struct AddProjectView: View {
@@ -17,9 +18,8 @@ struct AddProjectView: View {
 
     var editingProject: ProjectFB?
 
-    let user = Auth.auth().currentUser!
     private let colorsStringArray: [String] = ["blue", "yellow", "orange", "cyan", "red", "green", "mint", "purple", "pink", "indigo", "brown"]
-    
+
     @State private var project: ProjectModel
     @State private var showError = false
     @State private var newChecklistItem: String = ""
@@ -27,7 +27,11 @@ struct AddProjectView: View {
     @State private var crewSearch: String = ""
     @State private var originalCrew: [String] = []
 
-    //MARK: init
+    // Keep focus stable while list updates
+    private enum FocusField: Hashable { case crewSearch }
+    @FocusState private var focus: FocusField?
+
+    // MARK: init
     init(editingProject: ProjectFB? = nil) {
         self.editingProject = editingProject
         let user = Auth.auth().currentUser
@@ -57,37 +61,54 @@ struct AddProjectView: View {
             ))
         }
     }
-    
+
     var body: some View {
-        NavigationView {
+        NavigationStack {
             form
-            .navigationTitle("Add Project")
-            .toolbar {
-                toolbarContent
-            }
-            .onAppear {
-                onAppearFunc()
-            }
+                .navigationTitle("Add Project")
+                .toolbar { toolbarContent }
+                .onAppear { onAppearFunc(); DispatchQueue.main.async { focus = .crewSearch } }
+
+                // Debounced search driven from view-level task
+                .task(id: crewSearch) {
+                    let q = crewSearch.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !q.isEmpty else {
+                        searchUserViewModel.foundUIDs = []
+                        return
+                    }
+                    try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
+                    // If user kept typing during sleep, this task has already been cancelled/restarted
+
+                    var exclude = Set(project.crew)
+                    exclude.insert(project.owner)
+                    if let me = Auth.auth().currentUser?.uid { exclude.insert(me) }
+
+                    searchUserViewModel.searchUsers(with: q, alsoExclude: exclude)
+                }
+                // Keep focus when results repopulate to avoid keyboard drop
+                .onChange(of: searchUserViewModel.foundUIDs) { _ in
+                    if !crewSearch.isEmpty { focus = .crewSearch }
+                }
         }
     }
-    //MARK: Form var view
+
+    // MARK: Form view
     private var form: some View {
         Form {
             infoSection
             crewSection
             detailsSection
             if showError {
-                Text(errorMessage)
-                    .foregroundColor(.red)
+                Text(errorMessage).foregroundColor(.red)
             }
-            
+
             Button(editingProject != nil ? "Update Project" : "Add Project") {
                 savingConditions()
             }
             .foregroundStyle(Color.accentColor)
         }
     }
-    
+
     private var infoSection: some View {
         Section(header: Text("Project Info")) {
             TextField("Project Name *", text: $project.projectName)
@@ -95,15 +116,13 @@ struct AddProjectView: View {
             checklist
         }
     }
-    
-    //MARK: Checklist
+
+    // MARK: Checklist
     private var checklist: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 TextField("Add checklist item", text: $newChecklistItem)
-                    .onSubmit {
-                        addChecklistRow()
-                    }
+                    .onSubmit { addChecklistRow() }
                 Button {
                     addChecklistRow()
                 } label: {
@@ -117,58 +136,46 @@ struct AddProjectView: View {
             checklistList
         }
     }
-    
+
     private var checklistList: some View {
         ForEach(project.checklist) { item in
             HStack {
                 Image(systemName: "minus.circle.fill")
                     .symbolRenderingMode(.multicolor)
                     .foregroundColor(.red)
-                    .onTapGesture {
-                        removeChecklistItem(id: item.id)
-                    }
-                Text(item.text)
-                    .foregroundColor(.primary)
+                    .onTapGesture { removeChecklistItem(id: item.id) }
+                Text(item.text).foregroundColor(.primary)
             }
             .padding(.vertical, 4)
         }
     }
 
-    
     private var crewSection: some View {
         Section(header: Text("Crew")) {
             UserRowView(uid: project.owner)
-            if !project.crew.isEmpty {
-                crewList
-            }
+            if !project.crew.isEmpty { crewList }
+
             TextField("Search to add crew", text: $crewSearch)
-                .onChange(of: crewSearch) { oldValue, newValue in
-                    searchUserViewModel.searchAcceptedConnections(matching: newValue)
-                    print("searchUserViewModel.foundUIDs: -- ", searchUserViewModel.foundUIDs)
-                }
-            
+                .focused($focus, equals: .crewSearch)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+                .submitLabel(.search)
+
             if !crewSearch.isEmpty {
                 crewSearchingView
             }
         }
     }
-    
-    //MARK: Crew searchfield
+
+    // MARK: Crew search results
     private var crewSearchingView: some View {
-        // current user id
         let me = userViewModel.user?.uid
-
-        // sets for fast membership checks
         let crewSet = Set(project.crew)
-
-        // results: in my connections, not already in crew, and not me
-        let results = searchUserViewModel.foundUIDs.filter {
-            $0 != me && !crewSet.contains($0)
-        }
+        let results = searchUserViewModel.foundUIDs.filter { $0 != me && !crewSet.contains($0) }
 
         return VStack(alignment: .leading) {
             if results.isEmpty {
-                Text("No connections found.").foregroundColor(.secondary)
+                Text("No users found.").foregroundColor(.secondary)
             } else {
                 ForEach(results, id: \.self) { uid in
                     HStack {
@@ -184,98 +191,79 @@ struct AddProjectView: View {
             }
         }
     }
-    //MARK: Crew list
+
+    // MARK: Crew list
     private var crewList: some View {
         ForEach(project.crew, id: \.self) { uid in
             HStack {
-                Button(action: {
-                    removeUserFromCrew(uid)
-                }) {
+                Button(action: { removeUserFromCrew(uid) }) {
                     Image(systemName: "minus.circle.fill")
                         .symbolRenderingMode(.multicolor)
                         .foregroundColor(.red)
                 }
-
                 UserRowView(uid: uid)
             }
         }
     }
-    
-    //MARK: Dates
+
+    // MARK: Details
     private var detailsSection: some View {
         Section(header: Text("Details")) {
-            colorPicker
-                .buttonStyle(.plain)
+            colorPicker.buttonStyle(.plain)
             DatePicker("Start Date *", selection: $project.startDate, displayedComponents: .date)
             DatePicker("Finish Date *", selection: $project.finishDate, displayedComponents: .date)
             Toggle("Active", isOn: $project.active)
         }
     }
-    
-    //MARK: Color picker
+
     private var colorPicker: some View {
         Menu {
             ForEach(colorsStringArray, id: \.self) { colorName in
                 colorPickerButton(for: colorName)
             }
-        } label: {
-            menuLabel
-        }
+        } label: { menuLabel }
     }
-    
+
     private var menuLabel: some View {
         HStack {
             Text("Color *")
             Spacer()
-            if project.color.isEmpty{
+            if project.color.isEmpty {
                 HStack {
                     Text("Select a color")
-                    Image(systemName: "chevron.up.chevron.down")
-                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.up.chevron.down").foregroundStyle(.secondary)
                 }
-            }else {
+            } else {
                 HStack {
                     Text(project.color.capitalized)
                     Circle()
                         .fill(ProjectColorHelper.color(for: project.color))
                         .frame(width: 20, height: 20)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.up.chevron.down").foregroundStyle(.secondary)
                 }
             }
         }
     }
-    
-    ///Toolbar
+
+    // MARK: Toolbar
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") {
-                dismiss()
-            }
-            .foregroundStyle(Color.accentColor)
+            Button("Cancel") { dismiss() }
+                .foregroundStyle(Color.accentColor)
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button(editingProject != nil ? "Update" : "Add") {
-                savingConditions()
-            }
-            .foregroundStyle(Color.accentColor)
+            Button(editingProject != nil ? "Update" : "Add") { savingConditions() }
+                .foregroundStyle(Color.accentColor)
         }
     }
-    
-    
-    //MARK: Functions
-    ///ColorPicker Button
+
+    // MARK: Functions
     @ViewBuilder
     private func colorPickerButton(for colorName: String) -> some View {
-        Button {
-            project.color = colorName
-        } label: {
-            colorPickerLabel(for: colorName)
-        }
+        Button { project.color = colorName } label: { colorPickerLabel(for: colorName) }
     }
-    
-    ///ColorPicker Button label
+
     @ViewBuilder
     private func colorPickerLabel(for colorName: String) -> some View {
         HStack {
@@ -286,16 +274,15 @@ struct AddProjectView: View {
                 .frame(width: 20, height: 20)
         }
     }
-    
+
     private func savingConditions() {
         if project.projectName.isEmpty || project.owner.isEmpty || project.comments.isEmpty || project.color.isEmpty {
             showError = true
             errorMessage = "Please fill all required fields."
-            
-        }else if isProjectNameUsed {
+        } else if isProjectNameUsed {
             showError = true
             errorMessage = "Project name already exists."
-        }else {
+        } else {
             showError = false
             errorMessage = ""
             if editingProject != nil {
@@ -305,8 +292,8 @@ struct AddProjectView: View {
             }
         }
     }
-    
-    ///Saves / Adds project to Firebase Firestore
+
+    // Saves / Adds project to Firebase Firestore
     private func addProject() {
         project.checklist = project.checklist.map { ChecklistItem(text: $0.text, isChecked: false) }
         let user = Auth.auth().currentUser
@@ -317,31 +304,17 @@ struct AddProjectView: View {
         notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
         dismiss()
     }
-    
-    /// func that runs on Appear
+
+    // Runs on appear
     private func onAppearFunc() {
         if let crew = editingProject?.crew {
             originalCrew = crew
-        }else {
+        } else {
             originalCrew = project.crew
         }
-        ///if editingProject exist, changes view to editing mode
-//        if let editingProject = editingProject {
-//            project = ProjectModel(
-//                projectName: editingProject.name,
-//                owner: editingProject.owner,
-//                crew: editingProject.crew,
-//                checklist: editingProject.checklist,
-//                comments: editingProject.comments,
-//                color: editingProject.color,
-//                startDate: editingProject.startDate,
-//                finishDate: editingProject.finishDate,
-//                active: editingProject.active
-//            )
-//        }
     }
-    
-    ///Check if crew changed and send invite notification if needed
+
+    // Send invite notifications to newly added crew
     private func notifyNewCrewConnectionsIfNeeded(originalCrew: [String]) {
         let addedCrew = project.crew.filter { !originalCrew.contains($0) }
         for uid in addedCrew {
@@ -359,7 +332,7 @@ struct AddProjectView: View {
         }
     }
 
-    ///Save updated project to Firebase Firestore
+    // Update existing project
     private func updateProject() {
         if let editingProject = editingProject {
             projectViewModel.updateProject(documentId: editingProject.documentId, with: project)
@@ -367,14 +340,12 @@ struct AddProjectView: View {
             dismiss()
         }
     }
-    
-    ///Remove checklist Item from project.checklist
+
+    // Checklist ops
     private func removeChecklistItem(id: UUID) {
         project.checklist.removeAll { $0.id == id }
-        print(project.checklist)
     }
-    
-    ///Add checklist Item to project.checlist
+
     private func addChecklistRow() {
         let trimmedItem = newChecklistItem.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedItem.isEmpty {
@@ -383,29 +354,33 @@ struct AddProjectView: View {
             updatedChecklist.append(newItem)
             project.checklist = updatedChecklist
             newChecklistItem = ""
-            print(project.checklist)
         }
     }
-    
-    ///Delete Crew's uid from project.crew array
+
+    // Crew ops
     private func removeUserFromCrew(_ uid: String) {
         if let index = project.crew.firstIndex(of: uid) {
             project.crew.remove(at: index)
         }
     }
-    
-    ///check if project name is used
+
+    // Check if project name is used
     private var isProjectNameUsed: Bool {
         let trimmedName = project.projectName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return false }
         // If editing, ignore the current project's name
-        return projectViewModel.projects.contains(where: { $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame && $0.documentId != editingProject?.documentId })
+        return projectViewModel.projects.contains {
+            $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame && $0.documentId != editingProject?.documentId
+        }
     }
 }
 
 #Preview {
-    AddProjectView()
-        .environmentObject(UserViewModel())
-        .environmentObject(SearchUserViewModel())
-        .environmentObject(ProjectViewModel())
+    NavigationStack {
+        AddProjectView()
+            .environmentObject(UserViewModel())
+            .environmentObject(SearchUserViewModel())
+            .environmentObject(ProjectViewModel())
+            .environmentObject(NotificationsViewModel())
+    }
 }
