@@ -53,7 +53,7 @@ struct ClockTabView: View {
     }
     
     private var list: some View {
-        List {
+        GlassList {
             controlsSection
             activeProjectsSection
             inactiveProjectsSection

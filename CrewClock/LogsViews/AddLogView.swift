@@ -36,7 +36,7 @@ struct AddLogView: View {
     
     @ViewBuilder
     private var form: some View {
-        Form {
+        GlassList {
             logInfoSection
             dateTimeSection
             detailsSection

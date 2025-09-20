@@ -18,66 +18,7 @@ struct SettingsTabView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                profileHeaderSection
-
-                headerScroll
-                
-                Section(header: Text("Temas")) {
-                    NavigationLink("Create a Team") { CreateTeamView() }
-                    NavigationLink("My Teams") { MyTeamsView() }
-                }
-                
-                Section(header: Text("Settings")) {
-                    NavigationLink("Preferences", destination: Text("Time Tracking Preferences View"))
-                    NavigationLink("Linked Spreadsheet", destination: Text("Spreadsheet Settings View"))
-                    NavigationLink {
-                        Text("Appearance Settings View")
-                    } label: {
-                        Text("Theme & Font")
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                }
-
-                Section(header: Text("Notifications")) {
-                    NavigationLink("Notifications list", destination: NotificationsView())
-                }
-
-                Section(header: Text("Help & Support")) {
-                    NavigationLink("FAQ", destination: Text("FAQ View"))
-                    NavigationLink("Contact Support", destination: Text("Contact Support View"))
-                    NavigationLink("Report a Bug", destination: Text("Report a Bug View"))
-                }
-
-                Section(header: Text("Privacy & Data")) {
-                    NavigationLink("Export My Logs", destination: Text("Export Logs View"))
-                    NavigationLink("Delete My Account", destination: DeleteAccountView().environmentObject(AccountDeletionViewModel()).environmentObject(AuthViewModel()))
-                }
-
-                Section(header: Text("Advanced")) {
-                    NavigationLink("Re-authenticate Google", destination: Text("Re-auth View"))
-                    NavigationLink("Reset App Settings", destination: Text("Reset Settings View"))
-                }
-                
-                Section(header: Text("About")) {
-                    NavigationLink("About App", destination: AppOverviewView())
-                    NavigationLink("Policy Policy", destination: WebView(url: K.Links.privacyPolicy).edgesIgnoringSafeArea(.bottom).tint(K.Colors.accent))
-                    NavigationLink("Terms of Use ", destination: WebView(url: K.Links.termsOfUse).edgesIgnoringSafeArea(.bottom).tint(K.Colors.accent))
-                }
-                
-                Section(footer: Text("Version 1.0.0")) {
-                    Text("CrewClock © 2025 Molanter")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                }
-                
-                Section {
-                    Spacer()
-                        .frame(height: 50)
-                        .listRowBackground(Color.clear)
-                }
-            }
+            listView
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -85,6 +26,88 @@ struct SettingsTabView: View {
                         Image(systemName: "bell")
                     }
                 }
+            }
+        }
+    }
+    
+    private var listView: some View {
+        GlassList {
+            profileHeaderSection
+
+            headerScroll
+            
+            teamsSection
+            
+            settingsSection
+
+            Section(header: Text("Notifications")) {
+                NavigationLink("Notifications list", destination: NotificationsView())
+            }
+
+            Section(header: Text("Help & Support")) {
+                NavigationLink("FAQ", destination: Text("FAQ View"))
+                NavigationLink("Contact Support", destination: Text("Contact Support View"))
+                NavigationLink("Report a Bug", destination: Text("Report a Bug View"))
+            }
+
+            Section(header: Text("Privacy & Data")) {
+                NavigationLink("Export My Logs", destination: Text("Export Logs View"))
+                NavigationLink("Delete My Account", destination: DeleteAccountView().environmentObject(AccountDeletionViewModel()).environmentObject(AuthViewModel()))
+            }
+
+            Section(header: Text("Advanced")) {
+                NavigationLink("Re-authenticate Google", destination: Text("Re-auth View"))
+                NavigationLink("Reset App Settings", destination: Text("Reset Settings View"))
+            }
+            
+            Section(header: Text("About")) {
+                NavigationLink("About App", destination: AppOverviewView())
+                NavigationLink("Policy Policy", destination: WebView(url: K.Links.privacyPolicy).edgesIgnoringSafeArea(.bottom).tint(K.Colors.accent))
+                NavigationLink("Terms of Use ", destination: WebView(url: K.Links.termsOfUse).edgesIgnoringSafeArea(.bottom).tint(K.Colors.accent))
+            }
+            
+            Section(footer: Text("Version 1.0.0")) {
+                Text("CrewClock © 2025 Molanter")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+            }
+            
+            Section {
+                Spacer()
+                    .frame(height: 50)
+                    .listRowBackground(Color.clear)
+            }
+        }
+//        .scrollContentBackground(.hidden)
+//        .background {
+//            ListBackground()
+//                .ignoresSafeArea()   // under status/nav/tab bars
+//        }
+//        .listStyle(.insetGrouped)
+    }
+    
+    private var teamsSection: some View {
+        Section(header: Text("Temas")) {
+            NavigationLink("Create a Team") { CreateTeamView() }
+            NavigationLink("My Teams") { MyTeamsView() }
+        }
+//        .listRowBackground(
+//            TransparentBlurView(removeAllFilters: false)
+//                .blur(radius: 9, opaque: true)
+//                .background(.red.opacity(0.15))
+//        )
+    }
+    
+    private var settingsSection: some View {
+        Section(header: Text("Settings")) {
+            NavigationLink("Preferences", destination: Text("Time Tracking Preferences View"))
+            NavigationLink("Linked Spreadsheet", destination: Text("Spreadsheet Settings View"))
+            NavigationLink {
+                Text("Appearance Settings View")
+            } label: {
+                Text("Theme & Font")
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
         }
     }

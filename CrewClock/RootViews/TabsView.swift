@@ -43,7 +43,7 @@ struct TabsView: View {
                     case .logs:
 //                        LogsTabView()
                         CalendarLogsView()
-                            .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")
+//                            .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")
                     case .clock:
                         ClockTabView()
                     case .settings:
@@ -71,7 +71,7 @@ struct TabsView: View {
         TabView(selection: $publishedVars.tabSelected) {
             Tab("Logs", systemImage: "list.bullet.below.rectangle", value: 0) {
                 CalendarLogsView()
-                    .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")
+//                    .searchable(text: $publishedVars.searchLog, placement: .navigationBarDrawer, prompt: "Search logs")
             }
             Tab("Clock", systemImage: "clock", value: 1) {
                 ClockTabView()

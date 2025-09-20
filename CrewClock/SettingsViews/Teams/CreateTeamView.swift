@@ -33,7 +33,7 @@ struct CreateTeamView: View {
     }
     
     private var list: some View {
-        List {
+        GlassList {
             Section {
                 nameTextField
             } header: {

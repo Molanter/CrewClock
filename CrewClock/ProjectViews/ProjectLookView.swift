@@ -59,7 +59,7 @@ struct ProjectLookView: View {
     
     @ViewBuilder
     private var list: some View {
-        List {
+        GlassList {
             if !(project?.checklist.isEmpty ?? true) {
                 checklistSection
             }

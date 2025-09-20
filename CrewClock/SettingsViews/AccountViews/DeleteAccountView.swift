@@ -23,7 +23,7 @@ struct DeleteAccountView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        Form {
+        GlassList {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Delete Account")

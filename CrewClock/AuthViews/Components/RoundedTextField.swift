@@ -33,7 +33,6 @@ struct RoundedTextField: View {
                     TransparentBlurView(removeAllFilters: false)
                         .blur(radius: 9, opaque: true)
                         .background(.red.opacity(0.15))
-                        .cornerRadius(K.UI.cornerRadius)
                 }else {
                     GlassBlur(removeAllFilters: false)
                         .cornerRadius(K.UI.cornerRadius)

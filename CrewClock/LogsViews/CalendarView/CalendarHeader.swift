@@ -19,17 +19,17 @@ struct CalendarHeader: View {
     
     var body: some View {
         HeaderView()
+            .navigationBarTitleDisplayMode(.inline)
+            .background {
+                TransparentBlurView(removeAllFilters: false)
+                    .blur(radius: 9, opaque: true)
+                    .background(.white.opacity(0.1))
+            }
+            .frame(height: 100)
     }
     
     func HeaderView() -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                previousWeekButton
-                Spacer()
-                weekTitle
-                Spacer()
-                nextWeekButton
-            }
             /// Week View
             weeksDatesView
             
@@ -42,10 +42,29 @@ struct CalendarHeader: View {
             }
             .font(.caption2)
         }
-        .padding([.horizontal, .top], 15)
+        .padding(.horizontal, 15)
         .padding(.bottom, 10)
+        .toolbar {
+            toolbar
+        }
     }
     
+    private var toolbar: some ToolbarContent {
+        Group {
+            ToolbarItem(placement: .topBarLeading) {
+                previousWeekButton
+            }
+            ToolbarItem(placement: .principal){
+                weekTitle
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                nextWeekButton
+            }
+        }
+    }
+    
+    @ViewBuilder
+
     private var weeksDatesView: some View {
         GeometryReader { proxy in
             TabView(selection: $currentDate) {
@@ -91,8 +110,6 @@ struct CalendarHeader: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
         .frame(height: 80)
-        .padding(.vertical, 5)
-        .offset(y: 5)
         .onChange(of: currentDate) { old, newValue in
             currentWeek = Date.currentWeek(from: newValue)
             selectedDate = currentDate
@@ -140,7 +157,6 @@ struct CalendarHeader: View {
         }) {
             Image(systemName: "chevron.left")
                 .font(.title2)
-                .padding()
                 .foregroundStyle(K.Colors.accent)
             
         }
@@ -154,7 +170,6 @@ struct CalendarHeader: View {
         }) {
             Image(systemName: "chevron.right")
                 .font(.title2)
-                .padding()
                 .foregroundStyle(K.Colors.accent)
         }
     }

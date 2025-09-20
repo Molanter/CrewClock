@@ -47,7 +47,7 @@ struct AddMembersView: View {
     }
     
     private var list: some View {
-        List {
+        GlassList {
             searchSection
             membersSection
             if !errorMessage.isEmpty {

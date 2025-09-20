@@ -28,6 +28,11 @@ struct ClockSearchView: View {
 //            }
             switchView
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            ListBackground()
+                .ignoresSafeArea()
+        }
     }
     
     private var switchView: some View {
@@ -50,8 +55,10 @@ struct ClockSearchView: View {
     }
     
     private var list: some View {
-        List(searchUserViewModel.foundUIDs, id: \.self) { uid in
-            row(uid)
+        GlassList {
+            ForEach(searchUserViewModel.foundUIDs, id: \.self) { uid in
+                row(uid)
+            }
         }
     }
     

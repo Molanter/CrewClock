@@ -9,6 +9,15 @@ import SwiftUI
 
 struct ContentView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+        
+    init() {
+            // Make List use our own container background (optional):
+            UITableView.appearance().backgroundColor = .clear
+
+            // Default row background for every List row:
+            UITableViewCell.appearance().backgroundColor = UIColor.systemBackground
+            // Or a custom color: UIColor { trait in ... }
+        }
     
     var body: some View {
         if hasSeenOnboarding{

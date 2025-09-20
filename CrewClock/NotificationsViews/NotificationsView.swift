@@ -29,15 +29,19 @@ struct NotificationsView: View {
     }
     
     var body: some View {
-        segment
         list
             .onAppear {
                 onAppear()
             }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    segment
+                }
+            }
     }
     
     private var list: some View {
-        List {
+        GlassList {
             ForEach(filteredNotifications) { notification in
                 NotificationRowView(notification: notification)
                     .listRowBackground(Color.clear)
@@ -55,7 +59,6 @@ struct NotificationsView: View {
             Text("Previous").tag(2)
         }
         .pickerStyle(.segmented)
-        .padding()
     }
     
     private func onAppear() {

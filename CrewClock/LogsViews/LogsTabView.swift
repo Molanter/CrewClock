@@ -80,7 +80,7 @@ struct LogsTabView: View {
         if filteredLogs.isEmpty {
             NoContentView(contentType: .noResults)
         } else {
-            List {
+            GlassList {
                 ForEach(filteredLogs) { log in
                     LogRowView(selectedProject: .constant(log), log: log)
                 }

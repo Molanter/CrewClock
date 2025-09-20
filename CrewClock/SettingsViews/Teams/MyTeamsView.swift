@@ -15,7 +15,7 @@ struct MyTeamsView: View {
     @State private var showMember = true
 
     var body: some View {
-        List {
+        GlassList {
             if vm.isLoading {
                 Section { ProgressView().frame(maxWidth: .infinity) }
             }

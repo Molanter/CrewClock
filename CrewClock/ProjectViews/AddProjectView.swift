@@ -94,7 +94,7 @@ struct AddProjectView: View {
 
     // MARK: Form view
     private var form: some View {
-        Form {
+        GlassList {
             infoSection
             crewSection
             detailsSection
