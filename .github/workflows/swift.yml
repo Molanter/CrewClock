@@ -10,7 +10,8 @@ on:
     branches: [ main ]
 
 env:
-  SCHEME: CrewClock   # change if your scheme is named differently
+  SCHEME: CrewClock             # <- exact scheme name from Xcode
+  PROJECT_PATH: CrewClock.xcodeproj  # <- your .xcodeproj at repo root
 
 jobs:
   build-and-test:
@@ -33,42 +34,30 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      - name: Locate Xcode project/workspace
-        id: locate
+      - name: List schemes (sanity check)
         run: |
-          set -e
-          if ls *.xcworkspace >/dev/null 2>&1; then
-            echo "CONTAINER_TYPE=workspace" >> $GITHUB_ENV
-            echo "CONTAINER_PATH=$(ls -1 *.xcworkspace | head -n1)" >> $GITHUB_ENV
-          elif ls *.xcodeproj >/dev/null 2>&1; then
-            echo "CONTAINER_TYPE=project" >> $GITHUB_ENV
-            echo "CONTAINER_PATH=$(ls -1 *.xcodeproj | head -n1)" >> $GITHUB_ENV
-          else
-            echo "No .xcworkspace or .xcodeproj found"; exit 1
-          fi
-          echo "Found $CONTAINER_TYPE: $CONTAINER_PATH"
-
-      - name: List schemes
-        run: |
-          xcodebuild -list -json -$CONTAINER_TYPE "$CONTAINER_PATH" || true
+          xcodebuild -list -json -project "$PROJECT_PATH" || true
 
       - name: Build + Test (Simulator)
+        shell: bash
         run: |
           set -e
-          echo "Building $SCHEME from $CONTAINER_PATH"
-          if xcodebuild -$CONTAINER_TYPE "$CONTAINER_PATH" \
-                        -scheme "$SCHEME" \
-                        -configuration Debug \
-                        -destination 'platform=iOS Simulator,name=iPhone 15' \
-                        CODE_SIGNING_ALLOWED=NO \
-                        clean build test; then
-            echo "Build + test succeeded"
+          echo "Building $SCHEME from $PROJECT_PATH"
+          if xcodebuild \
+                -project "$PROJECT_PATH" \
+                -scheme "$SCHEME" \
+                -configuration Debug \
+                -destination 'platform=iOS Simulator,name=iPhone 15' \
+                CODE_SIGNING_ALLOWED=NO \
+                clean build test; then
+            echo "Build + test succeeded."
           else
-            echo "No test action or tests failed; attempting build only..."
-            xcodebuild -$CONTAINER_TYPE "$CONTAINER_PATH" \
-                       -scheme "$SCHEME" \
-                       -configuration Debug \
-                       -destination 'platform=iOS Simulator,name=iPhone 15' \
-                       CODE_SIGNING_ALLOWED=NO \
-                       clean build
+            echo "Tests failed or no test action; attempting build only…"
+            xcodebuild \
+                -project "$PROJECT_PATH" \
+                -scheme "$SCHEME" \
+                -configuration Debug \
+                -destination 'platform=iOS Simulator,name=iPhone 15' \
+                CODE_SIGNING_ALLOWED=NO \
+                clean build
           fi
