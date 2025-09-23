@@ -20,7 +20,7 @@ struct CalendarLogsView: View {
     var body: some View {
         NavigationStack {
             page
-                .background(backGroundView())
+//                .background(backGroundView())
         }
     }
     
@@ -28,9 +28,13 @@ struct CalendarLogsView: View {
         ZStack(alignment: .top) {
             CalendarHeader(currentDate: $currentDate, currentWeek: $currentWeek, selectedDate: $selectedDate)
             calendar
+                .background(backGroundColor())
+
                 .overlay { OutsideGlassOverlay(radius: K.UI.cornerRadius) }
                 .offset(y: 104)
         }
+        .background(Color(uiColor: .secondarySystemBackground))
+        //        colorScheme == .light ? backGroundColor() : .background.secondary
         .onAppear {
             if selectedDate == nil {
                 selectedDate = currentWeek.first(where: { $0.date.isSame(.now) })?.date

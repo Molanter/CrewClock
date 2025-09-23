@@ -20,12 +20,12 @@ struct CalendarHeader: View {
     var body: some View {
         HeaderView()
             .navigationBarTitleDisplayMode(.inline)
-            .background {
-                TransparentBlurView(removeAllFilters: false)
-                    .blur(radius: 9, opaque: true)
-                    .background(.white.opacity(0.1))
-            }
-            .frame(height: 100)
+//            .background {
+//                TransparentBlurView(removeAllFilters: false)
+//                    .blur(radius: 9, opaque: true)
+//                    .background(.white.opacity(0.1))
+//            }
+//            .frame(height: 100)
     }
     
     func HeaderView() -> some View {
@@ -102,6 +102,7 @@ struct CalendarHeader: View {
                                 }
                             }
                         }
+                        divider(offset: 1)
                     }
                     .frame(width: proxy.size.width)
                     .tag(weekBaseDate)
@@ -160,6 +161,12 @@ struct CalendarHeader: View {
                 .foregroundStyle(K.Colors.accent)
             
         }
+    }
+    
+    private func divider(offset: CGFloat = 0) -> some View {
+        Divider()
+            .frame(height: 35)
+            .offset(x: offset)
     }
     
     private var nextWeekButton: some View {

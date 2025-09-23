@@ -15,10 +15,16 @@ struct ListBackground: View {
 //                colors: [.blue.opacity(0.5), .green.opacity(0.5), .red.opacity(0.5)],
 //                startPoint: .topLeading, endPoint: .bottomTrailing
 //            )
-            TwoCirclesBackground()
-            TransparentBlurView(removeAllFilters: true)
-                .blur(radius: 9, opaque: true)
-                .background(.white.opacity(0.05))
+//            TwoCirclesBackground()
+            Image("blue-side-palet")
+                .resizable()
+                .scaledToFill() // or use .scaledToFit() if you prefer full image without cropping
+                .clipped()
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+//            TransparentBlurView(removeAllFilters: true)
+//                .blur(radius: 9, opaque: true)
+//                .background(.white.opacity(0.05))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

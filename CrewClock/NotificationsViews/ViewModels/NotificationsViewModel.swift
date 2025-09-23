@@ -251,4 +251,23 @@ final class NotificationsViewModel: ObservableObject {
             }
         }
     }
+    
+    // MARK: - Delete
+
+    /// Delete a notification by its documentId (preferred).
+    func deleteNotification(documentId: String,
+                            completion: ((Bool) -> Void)? = nil) {
+        db.collection("notifications").document(documentId)
+            .delete { [weak self] error in
+                if let error = error {
+                    print("❌ Error deleting notification (docId=\(documentId)): \(error.localizedDescription)")
+                    completion?(false)
+                } else {
+                    // Update local state
+                    self?.notifications.removeAll { $0.id == documentId }
+                    print("🗑️ Deleted notification (docId=\(documentId))")
+                    completion?(true)
+                }
+            }
+    }
 }

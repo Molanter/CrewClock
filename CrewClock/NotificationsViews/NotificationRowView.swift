@@ -29,30 +29,53 @@ struct NotificationRowView: View {
             .onAppear {
                 appear()
             }
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    notificationsViewModel.deleteNotification(documentId: notification.id)
+                }label: {
+                    Image(systemName: "trash")
+                }
+            }
+    }
+    
+    private var leftSection: some View {
+        VStack {
+            profilePicture
+            Rectangle()
+                .foregroundStyle(.secondary)
+                .frame(width: 1)
+                .frame(maxHeight: .infinity)
+//                .padding()
+        }
     }
     
     private var row: some View {
-        VStack {
-            VStack {
-                header
-                message
-            }
-            if notification.type != .connectionAccepted && notification.type != .commentMention && notification.type != .scheduleUpdate {
-                buttons
-            }
+        HStack(alignment: .center, spacing: 10) {
+            leftSection
+            rightPart
         }
-        .padding(K.UI.padding*2)
+        .padding(K.UI.padding)
         .background {
             RoundedRectangle(cornerRadius: K.UI.cornerRadius)
                 .fill(Color(.listRow))
         }
     }
     
+    private var rightPart: some View {
+        VStack {
+            VStack(alignment: .leading, spacing: 10) {
+                header
+                message
+            }
+            if notification.type != .connectionAccepted && notification.type != .commentMention && notification.type != .scheduleUpdate, notification.type != .test {
+                buttons
+            }
+        }
+    }
+    
     private var header: some View {
         HStack {
             if let user = getUser(notification.fromUID) {
-                UserProfileImage(user.profileImage)
-                    .frame(width: 25)
                 Text(user.name).bold()
             } else {
                 Text(notification.type.message).bold()
@@ -62,6 +85,16 @@ struct NotificationRowView: View {
                 .foregroundStyle(.secondary)
         }
         .font(.caption)
+        .padding(.top, 10)
+    }
+    
+    private var profilePicture: some View {
+        Group {
+            if let user = getUser(notification.fromUID) {
+                UserProfileImage(user.profileImage)
+                    .frame(width: 25)
+            }
+        }
     }
     
     private var message: some View {

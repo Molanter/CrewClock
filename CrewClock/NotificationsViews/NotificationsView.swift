@@ -43,13 +43,32 @@ struct NotificationsView: View {
     private var list: some View {
         GlassList {
             ForEach(filteredNotifications) { notification in
-                NotificationRowView(notification: notification)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .padding(.bottom, K.UI.padding*2)
+                Section {
+                    NotificationRowView(notification: notification)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                }
+                .listSectionSpacing(notification.id == filteredNotifications.last?.id ? 0 : K.UI.padding * 2)
             }
+            footerNote
         }
+    }
+    
+    private var footerNote: some View {
+        Section {
+            HStack {
+                Text("")
+                Spacer()
+                Image(systemName: "arrow.left")
+                Text("swipe left to delete")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+        }
+        .listSectionSpacing(5)
     }
     
     private var segment: some View {

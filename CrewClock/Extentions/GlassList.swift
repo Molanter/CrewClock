@@ -18,19 +18,19 @@ public struct GlassList<Content: View>: View {
         // The actual List with your defaults
         List {
             content()
-                .listRowBackground(
-                    TransparentBlurView(removeAllFilters: false)
-                        .blur(radius: 9, opaque: true)
-                        .background(.white.opacity(0.1))
-                )
+//                .listRowBackground(
+//                    TransparentBlurView(removeAllFilters: false)
+//                        .blur(radius: 9, opaque: true)
+//                        .background(.white.opacity(0.1))
+//                )
         }
-        .background {
-            ListBackground()
-                .ignoresSafeArea()   // under status/nav/tab bars
-        }
+//        .background {
+//            ListBackground()
+//                .ignoresSafeArea()   // under status/nav/tab bars
+//        }
         .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .scrollDismissesKeyboard(.interactively) // restore keyboard handling
+//        .scrollContentBackground(.hidden)
+//        .scrollDismissesKeyboard(.interactively) // restore keyboard handling
     }
 }
 

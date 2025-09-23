@@ -12,10 +12,10 @@ struct OutsideGlassOverlay: View {
     var radius: CGFloat = K.UI.cornerRadius
 
     var body: some View {
-        TransparentBlurView(removeAllFilters: false)
-            .blur(radius: 0, opaque: true)
-            .background(.white.opacity(0.1))
-            .inverseMask {
+//        TransparentBlurView(removeAllFilters: false)
+//            .blur(radius: 0, opaque: true)
+//            .background(.white.opacity(0.1))
+        Color(uiColor: .secondarySystemBackground)            .inverseMask {
                 // The CLEAR window (your content) — rest stays blurred
                 UnevenRoundedRectangle(
                     topLeadingRadius: radius, bottomLeadingRadius: 0,
