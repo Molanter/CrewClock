@@ -10,8 +10,8 @@ on:
     branches: [ main ]
 
 env:
-  SCHEME: CrewClock             # <- exact scheme name from Xcode
-  PROJECT_PATH: CrewClock.xcodeproj  # <- your .xcodeproj at repo root
+  SCHEME: CrewClock             # <-- change if your scheme name is different
+  PROJECT_PATH: CrewClock.xcodeproj  # your .xcodeproj in repo root
 
 jobs:
   build-and-test:
@@ -40,24 +40,26 @@ jobs:
 
       - name: Build + Test (Simulator)
         shell: bash
+        env:
+          DEST: "platform=iOS Simulator,name=iPhone 16"  # from your runner’s list
         run: |
           set -e
-          echo "Building $SCHEME from $PROJECT_PATH"
+          echo "Building $SCHEME from $PROJECT_PATH on $DEST"
           if xcodebuild \
                 -project "$PROJECT_PATH" \
                 -scheme "$SCHEME" \
                 -configuration Debug \
-                -destination 'platform=iOS Simulator,name=iPhone 15' \
+                -destination "$DEST" \
                 CODE_SIGNING_ALLOWED=NO \
                 clean build test; then
             echo "Build + test succeeded."
           else
-            echo "Tests failed or no test action; attempting build only…"
+            echo "Tests failed or not configured; building only…"
             xcodebuild \
                 -project "$PROJECT_PATH" \
                 -scheme "$SCHEME" \
                 -configuration Debug \
-                -destination 'platform=iOS Simulator,name=iPhone 15' \
+                -destination "$DEST" \
                 CODE_SIGNING_ALLOWED=NO \
                 clean build
           fi
