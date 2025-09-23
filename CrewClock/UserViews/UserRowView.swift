@@ -40,7 +40,7 @@ struct UserRowView: View {
     private func profileImage(for user: UserFB) -> some View {
         let urlString = user.profileImage
         if !urlString.isEmpty {
-               UserProfileImage(urlString)
+               UserProfileImageCircle(urlString)
             .frame(width: 40, height: 40)
             .clipShape(Circle())
         } else {

@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct UserProfileImage: View {
+struct UserProfileImageCircle: View {
     let imageString: String
     
     init(_ imageString: String) {
@@ -35,5 +35,5 @@ struct UserProfileImage: View {
 }
 
 #Preview {
-    UserProfileImage("none")
+    UserProfileImageCircle("none")
 }

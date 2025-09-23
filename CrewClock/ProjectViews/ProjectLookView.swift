@@ -216,42 +216,36 @@ struct ProjectLookView: View {
     private func userScrollIcon(_ user: UserFB) -> some View {
         VStack(alignment: .center) {
             profileImage(user.profileImage)
-            if let firstLetter = user.name.split(separator: " ").first?.prefix(1),
-               let secondLetter = user.name.split(separator: " ").dropFirst().first?.prefix(1) {
-                Text("\(firstLetter)\(secondLetter)")
+            if let firstLetter = user.name.split(separator: " ").first/*.prefix(1)*/ {
+                let secondLetter = user.name
+                    .split(separator: " ")
+                    .dropFirst()
+                    .first
+                    .map { String($0.prefix(1)) } ?? ""
+                
+                Text("\(firstLetter) \(secondLetter)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .frame(width: 50)
-            } else if let firstLetter = user.name.first {
-                Text(String(firstLetter))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .frame(width: 50)
+                    .lineLimit(2)
+                    .frame(width: 75)
             }
         }
-        .padding(K.UI.padding)
-        .background {
-            background
-        }
-        .padding(.bottom, 5)
     }
     
     @ViewBuilder
     private func profileImage(_ profileImage: String) -> some View {
         Group {
             if profileImage.isEmpty {
-                Image(systemName: "person.circle")
+                Image(systemName: "person.crop.square.fill")
+                    .symbolRenderingMode(.multicolor)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 40)
+                    .frame(width: 75)
                     .padding(K.UI.padding)
                     .background { background }
             } else {
-                UserProfileImage(profileImage)
-                .frame(width: 40)
-                .cornerRadius(K.UI.cornerRadius - 8)
+                UserProfileImageRoundCorner(profileImage)
+                    .frame(width: 75, height: 75)
             }
         }
     }

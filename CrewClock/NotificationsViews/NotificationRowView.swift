@@ -91,7 +91,7 @@ struct NotificationRowView: View {
     private var profilePicture: some View {
         Group {
             if let user = getUser(notification.fromUID) {
-                UserProfileImage(user.profileImage)
+                UserProfileImageCircle(user.profileImage)
                     .frame(width: 25)
             }
         }
