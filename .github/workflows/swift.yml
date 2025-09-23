@@ -10,8 +10,8 @@ on:
     branches: [ main ]
 
 env:
-  SCHEME: CrewClock             # <-- change if your scheme name is different
-  PROJECT_PATH: CrewClock.xcodeproj  # your .xcodeproj in repo root
+  SCHEME: CrewClock
+  PROJECT_PATH: CrewClock.xcodeproj
 
 jobs:
   build-and-test:
@@ -35,31 +35,52 @@ jobs:
             ${{ runner.os }}-spm-
 
       - name: List schemes (sanity check)
-        run: |
-          xcodebuild -list -json -project "$PROJECT_PATH" || true
+        run: xcodebuild -list -json -project "$PROJECT_PATH" || true
 
+      # 🔎 Build, try tests; always produce logs & xcresult, and upload them
       - name: Build + Test (Simulator)
+        id: build
         shell: bash
         env:
-          DEST: "platform=iOS Simulator,name=iPhone 16"  # from your runner’s list
+          DEST: "platform=iOS Simulator,name=iPhone 16"
         run: |
-          set -e
+          set -euo pipefail
+          rm -rf build.xcresult || true
           echo "Building $SCHEME from $PROJECT_PATH on $DEST"
+
+          # Try test first; fall back to build-only if scheme has no tests
           if xcodebuild \
                 -project "$PROJECT_PATH" \
                 -scheme "$SCHEME" \
                 -configuration Debug \
                 -destination "$DEST" \
                 CODE_SIGNING_ALLOWED=NO \
-                clean build test; then
+                -resultBundlePath build.xcresult \
+                clean build test | tee xcodebuild.log; then
             echo "Build + test succeeded."
           else
-            echo "Tests failed or not configured; building only…"
-            xcodebuild \
-                -project "$PROJECT_PATH" \
-                -scheme "$SCHEME" \
-                -configuration Debug \
-                -destination "$DEST" \
-                CODE_SIGNING_ALLOWED=NO \
-                clean build
+            echo "Tests failed or not configured; attempting build only…"
+            rm -rf build.xcresult || true
+            if xcodebuild \
+                  -project "$PROJECT_PATH" \
+                  -scheme "$SCHEME" \
+                  -configuration Debug \
+                  -destination "$DEST" \
+                  CODE_SIGNING_ALLOWED=NO \
+                  -resultBundlePath build.xcresult \
+                  clean build | tee xcodebuild.log; then
+              echo "Build succeeded (without tests)."
+            else
+              echo "Build failed."
+              exit 65
+            fi
           fi
+
+      - name: Upload build artifacts (logs + xcresult)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-artifacts
+          path: |
+            xcodebuild.log
+            build.xcresult
