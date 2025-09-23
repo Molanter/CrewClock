@@ -1,22 +1,57 @@
 # This workflow will build a Swift project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
 
-name: Swift
+name: Swift (iOS)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
-  build:
-
-    runs-on: macos-latest
-
+  build-and-test:
+    runs-on: macos-14   # Apple Silicon runner with Xcode 16
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: swift build -v
-    - name: Run tests
-      run: swift test -v
+      - uses: actions/checkout@v4
+
+      # Pick a specific Xcode so your builds are stable
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.*"
+
+      # (Optional) Prime SPM cache between runs
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      # Helpful for debugging wrong scheme/workspace paths
+      - name: List Xcode projects and schemes
+        run: |
+          echo "Projects:"
+          ls -1 *.xcodeproj || true
+          echo "Workspaces:"
+          ls -1 *.xcworkspace || true
+          echo "Schemes (workspace preferred if you use SPM/CocoaPods):"
+          xcodebuild -list -json || true
+
+      # >>>> CHANGE THESE to match your repo <<<<
+      # If you have a .xcworkspace (SPM/Pods), use -workspace.
+      # Otherwise switch to -project YourApp.xcodeproj
+      - name: Build + Test (Simulator)
+        run: |
+          set -e
+          xcodebuild \
+            -workspace "CrewClock.xcworkspace" \
+            -scheme "CrewClock" \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            CODE_SIGNING_ALLOWED=NO \
+            clean build test
