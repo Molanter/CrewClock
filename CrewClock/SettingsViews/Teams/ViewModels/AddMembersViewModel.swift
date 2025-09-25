@@ -1,3 +1,11 @@
+//
+//  AddMembersViewModel.swift
+//  CrewClock
+//
+//  Created by Edgars Yarmolatiy on 9/24/25.
+//
+
+
 import Foundation
 import FirebaseAuth
 import FirebaseFirestore
@@ -32,43 +40,37 @@ final class AddMembersViewModel: ObservableObject {
         errorMessage = ""
 
         do {
-            // 1) Load current team doc to compute diffs & get team name (optional)
             let teamRef = db.collection("teams").document(teamId)
             let snap = try await teamRef.getDocument()
-            var teamName: String = (snap["name"] as? String) ?? "your team"
 
-            // existing members as array of maps
+            let teamName = (snap["name"] as? String) ?? "your team"
             let existing = (snap["members"] as? [[String: Any]]) ?? []
-            var existingByUID: [String: Int] = [:]  // uid -> index in existing
-            for (idx, m) in existing.enumerated() {
-                if let uid = m["uid"] as? String {
-                    existingByUID[uid] = idx
-                }
+
+            // Build lookup of existing member UIDs
+            var existingByUID = Set<String>()
+            for m in existing {
+                if let uid = m["uid"] as? String { existingByUID.insert(uid) }
             }
 
-            // 2) Compute who is new
-            let newUIDs = members.filter { existingByUID[$0] == nil }
-            guard !newUIDs.isEmpty else {
-                // Nothing new to add; nothing to notify.
-                return true
-            }
+            // Who is new?
+            let newUIDs = members.filter { !existingByUID.contains($0) }
+            guard !newUIDs.isEmpty else { return true }
 
-            // 3) Build updated array: keep old entries, append new invited entries
+            // Append Firestore-safe entries
             var updated = existing
             for uid in newUIDs {
                 updated.append([
                     "uid": uid,
-                    "role": "member",
+                    "role": "member",                     // String, not enum
                     "status": "invited",
-                    "addedAt": Date.now
+                    "addedAt": FieldValue.serverTimestamp() // or Timestamp(date: Date())
                 ])
             }
 
-            // 4) Persist full array (owner-only ‘members’ update; matches your rules)
+            // Persist array
             try await teamRef.setData(["members": updated], merge: true)
 
-            // 5) Send push notifications to newUIDs
-            // Choose your enum case. If you don’t have `.teamInvite`, reuse `.connectInvite`.
+            // Notify the new folks
             let title = "Invite to join \(teamName)"
             let msg   = "\(senderName) invited you to join \(teamName). Open CrewClock to accept."
             for uid in newUIDs {
@@ -76,11 +78,11 @@ final class AddMembersViewModel: ObservableObject {
                     title: title,
                     message: msg,
                     timestamp: Date(),
-                    recipientUID: [uid],
+                    recipientUID: [uid],            // keep your model shape
                     fromUID: senderUid,
                     isRead: false,
-                    type: NotificationType.teamInite,
-                    relatedId: teamId             // point at the team
+                    type: NotificationType.teamInvite,
+                    relatedId: teamId
                 )
                 notificationsVM.getFcmByUid(uid: uid, notification: notif)
             }

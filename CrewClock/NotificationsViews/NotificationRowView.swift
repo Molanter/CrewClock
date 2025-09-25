@@ -14,6 +14,8 @@ struct NotificationRowView: View {
     @EnvironmentObject private var projectViewModel: ProjectViewModel
     @EnvironmentObject private var notificationsViewModel: NotificationsViewModel
 
+    @StateObject private var teamsVM = MyTeamsViewModel()
+
     let notification: NotificationFB
     var auth = Auth.auth()
     
@@ -130,7 +132,7 @@ struct NotificationRowView: View {
         Button {
             mainAction(notification.type)
         } label: {
-            Text("Connect")
+            Text(notification.type.mainAction)
                 .padding(K.UI.padding)
                 .frame(maxWidth: .infinity)
                 .background {
@@ -167,9 +169,8 @@ struct NotificationRowView: View {
                 return
             case .test:
                 return
-            case .teamInite:
-                return
-            }
+            case .teamInvite:
+                Task { await teamsVM.acceptInvite(teamId: notification.relatedId) } }
         }
     }
     
@@ -190,8 +191,8 @@ struct NotificationRowView: View {
                 return
             case .test:
                 return
-            case .teamInite:
-                return
+            case .teamInvite:
+                teamsVM.leaveTeam(teamId: notification.relatedId)
             }
         }
         }

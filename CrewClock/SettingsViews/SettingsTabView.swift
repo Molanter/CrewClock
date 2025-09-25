@@ -14,7 +14,8 @@ struct SettingsTabView: View {
     @EnvironmentObject var publishedVars: PublishedVariebles
     @EnvironmentObject var notificationsViewModel: NotificationsViewModel
     @EnvironmentObject private var connectionsVM: ConnectionsViewModel
-
+    
+    @StateObject private var membershipVM = TeamMembershipCheckerViewModel()
     
     var body: some View {
         NavigationStack {
@@ -27,6 +28,8 @@ struct SettingsTabView: View {
                     }
                 }
             }
+            .onAppear {membershipVM.refresh()}
+            .onDisappear {membershipVM.stopListening()}
         }
     }
     
@@ -89,7 +92,11 @@ struct SettingsTabView: View {
     private var teamsSection: some View {
         Section(header: Text("Temas")) {
             NavigationLink("Create a Team") { CreateTeamView() }
-            NavigationLink("My Teams") { MyTeamsView() }
+            if membershipVM.isLoading {
+                Text("loading...")
+            }else {
+                NavigationLink("My Teams") { MyTeamsView() }
+            }
         }
 //        .listRowBackground(
 //            TransparentBlurView(removeAllFilters: false)

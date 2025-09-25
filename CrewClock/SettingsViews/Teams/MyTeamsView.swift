@@ -77,18 +77,30 @@ struct MyTeamsView: View {
     }
 
     private func row(_ team: TeamFB) -> some View {
-        HStack {
+//        HStack {
+//            VStack(alignment: .leading, spacing: 2) {
+//                Text(team.name).font(.body)
+//                Text("\(team.memberCount) member\(team.memberCount == 1 ? "" : "s")")
+//                    .font(.caption)
+//                    .foregroundStyle(.secondary)
+//            }
+//            Spacer()
+//            Image(systemName: "chevron.right")
+//                .foregroundStyle(.tertiary)
+//        }
+//        .contentShape(Rectangle())
+        
+        NavigationLink {
+            ManageTeamView(team: team)
+        } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(team.name).font(.body)
                 Text("\(team.memberCount) member\(team.memberCount == 1 ? "" : "s")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .foregroundStyle(.tertiary)
         }
-        .contentShape(Rectangle())
+
         // Hook up navigation to your Team detail if you have one:
         // .onTapGesture { /* navigate to TeamDetail(teamId: team.id) */ }
     }
