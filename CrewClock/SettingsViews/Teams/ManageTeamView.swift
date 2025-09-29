@@ -11,6 +11,7 @@ struct ManageTeamView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
 
     @StateObject private var teamsVM = MyTeamsViewModel()
+    @StateObject private var vmMembers = AddMembersViewModel()
 
     let team: TeamFB
     
@@ -50,11 +51,11 @@ struct ManageTeamView: View {
                 .toolbar {
                     if canManageMembers {
                         NavigationLink {
-                            AddMembersView(teamId: team.id)
+                            AddMembersView(teamId: team.id, initialMembers: team.members.map { $0.uid }, existingMembers: team.members)
+                                .environmentObject(vmMembers)
                         } label: {
-                            Label("Add members", image: "person.badge.plus")
+                            Label("Add members", systemImage: "person.badge.plus")
                         }
-
                     }
                 }
         }
@@ -77,19 +78,19 @@ struct ManageTeamView: View {
             }
             .ignoresSafeArea(edges: .top)
             .listStyle(.plain)
-            .actionSheet(isPresented: $showRoleActionSheet) {
-                ActionSheet(
-                    title: Text("Couldn’t change role"),
-                    message: Text(roleErrorMessage),
-                    buttons: [.cancel(Text("OK"))]
-                )
-            }
         }
     }
     
     private var membersList: some View {
         ForEach(sortedMembers, id: \.uid) { member in
             row(for: member)
+                .actionSheet(isPresented: $showRoleActionSheet) {
+                    ActionSheet(
+                        title: Text("Couldn’t change role"),
+                        message: Text(roleErrorMessage),
+                        buttons: [.cancel(Text("OK"))]
+                    )
+                }
                 .swipeActions {
                     if canManageMembers {
                         Button(role: .destructive) {
@@ -102,7 +103,6 @@ struct ManageTeamView: View {
         }
     }
     
-    // your existing row layout
     private func row(for member: TeamMemberEntry) -> some View {
         HStack {
             UserRowView(uid: member.uid)

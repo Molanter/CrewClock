@@ -63,7 +63,7 @@ final class AddMembersViewModel: ObservableObject {
                     "uid": uid,
                     "role": "member",                     // String, not enum
                     "status": "invited",
-                    "addedAt": FieldValue.serverTimestamp() // or Timestamp(date: Date())
+                    "addedAt": Date.now
                 ])
             }
 

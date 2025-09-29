@@ -15,6 +15,7 @@ struct K {
     
     struct Colors {
         static var accent = Color.green
+        static var teamColors: [Color] = [.red, .blue, .yellow, .gray, .green, .purple, .orange, .pink, .indigo, .cyan]
     }
 
     struct Fonts {
@@ -44,6 +45,54 @@ struct K {
             "no_eyes_monkey" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-21.gif?alt=media&token=b2d687dc-30ea-4448-b28c-e43abf83147f",
             "spiderweb" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-369.gif?alt=media&token=4a3a5eb5-1e40-41bc-9ea1-dc4139017dfc",
             "big_eyes" : "https://firebasestorage.googleapis.com/v0/b/crewclock-9a62b.firebasestorage.app/o/emoji%2FAnimatedEmojies-512px-384.gif?alt=media&token=dcf7984d-b857-4854-b304-b880e9ef052f"
+        ]
+    }
+    
+    struct SFSymbols {
+        static var teamArray: [String] = [
+            "person.3",
+            "folder",
+            "hammer",
+            "gearshape",
+            "paperclip",
+            "pencil.and.scribble",
+            "paperplane",
+            "book.pages",
+            "graduationcap",
+            "pencil.and.ruler",
+            "figure.fall",
+            "medal",
+            "globe",
+            "sos",
+            "wand.and.sparkles",
+            "wrench.and.screwdriver",
+            "theatermasks",
+            "house",
+            "lightbulb.max",
+            "popcorn",
+            "finder",
+            "airplane.up.right",
+            "car",
+            "sailboat",
+            "lizard.fill",
+            "dog.fill",
+            "bird.fill",
+            "laurel.leading.laurel.trailing",
+            "camera.macro",
+            "tree",
+            "movieclapper",
+            "face.dashed",
+            "brain.filled.head.profile",
+            "shippingbox.fill",
+            "alarm",
+            "fork.knife",
+            "waveform.path",
+            "touchid",
+            "compass.drawing",
+            "skew",
+            "checklist",
+            "ellipsis.curlybraces",
+            "dollarsign.circle"
         ]
     }
     
