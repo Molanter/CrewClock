@@ -152,9 +152,11 @@ struct CalendarHeader: View {
     
     private var previousWeekButton: some View {
         Button(action: {
-            currentDate = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: currentDate) ?? currentDate
-            currentWeek = Date.currentWeek(from: currentDate)
-            selectedDate = currentWeek.first?.date
+            withAnimation(.spring()) {
+                currentDate = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: currentDate) ?? currentDate
+                currentWeek = Date.currentWeek(from: currentDate)
+                selectedDate = currentWeek.first?.date
+            }
         }) {
             Image(systemName: "chevron.left")
                 .font(.title2)
@@ -171,9 +173,11 @@ struct CalendarHeader: View {
     
     private var nextWeekButton: some View {
         Button(action: {
-            currentDate = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: currentDate) ?? currentDate
-            currentWeek = Date.currentWeek(from: currentDate)
-            selectedDate = currentWeek.first?.date
+            withAnimation(.spring()) {
+                currentDate = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: currentDate) ?? currentDate
+                currentWeek = Date.currentWeek(from: currentDate)
+                selectedDate = currentWeek.first?.date
+            }
         }) {
             Image(systemName: "chevron.right")
                 .font(.title2)

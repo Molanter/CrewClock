@@ -127,7 +127,7 @@ struct CreateTeamView: View {
                             HStack {
                                 Circle()
                                     .fill(color)
-                                Text(colorName(color))
+                                Text(K.Colors.colorName(color))
                             }
                         }
                     }
@@ -136,7 +136,7 @@ struct CreateTeamView: View {
                         Circle()
                             .fill(colorLabel)
                             .frame(width: 15, height: 15)
-                        Text(colorName(colorLabel))
+                        Text(K.Colors.colorName(colorLabel))
                     }
                 }
             }
@@ -166,32 +166,6 @@ struct CreateTeamView: View {
     
     
 //MARK: Functions
-    private func colorName(_ color: Color) -> String {
-        switch color {
-        case .red:
-            return "Red"
-        case .blue:
-            return "Blue"
-        case .yellow:
-            return "Yellow"
-        case .gray:
-            return "Gray"
-        case .green:
-            return "Green"
-        case . purple:
-            return "Purple"
-        case .orange:
-            return "Orange"
-        case .pink:
-            return "Pink"
-        case . indigo:
-            return "Indigo"
-        case . cyan:
-            return "Cyan"
-        default:
-            return "Unknown"
-        }
-    }
     
     @ViewBuilder
     private func imageIcon(_ symbol: String) -> some View {

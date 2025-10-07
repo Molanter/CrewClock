@@ -16,6 +16,34 @@ struct K {
     struct Colors {
         static var accent = Color.green
         static var teamColors: [Color] = [.red, .blue, .yellow, .gray, .green, .purple, .orange, .pink, .indigo, .cyan]
+        
+        static func colorName(_ color: Color) -> String {
+            switch color {
+            case .red:
+                return "Red"
+            case .blue:
+                return "Blue"
+            case .yellow:
+                return "Yellow"
+            case .gray:
+                return "Gray"
+            case .green:
+                return "Green"
+            case . purple:
+                return "Purple"
+            case .orange:
+                return "Orange"
+            case .pink:
+                return "Pink"
+            case . indigo:
+                return "Indigo"
+            case . cyan:
+                return "Cyan"
+            default:
+                return "Unknown"
+            }
+        }
+
     }
 
     struct Fonts {

@@ -17,6 +17,8 @@ struct SettingsTabView: View {
     
     @StateObject private var membershipVM = TeamMembershipCheckerViewModel()
     
+    private let sections = SettingsNavigationLinks.allCases.groupedAndSorted()
+
     var body: some View {
         NavigationStack {
             listView
@@ -36,37 +38,14 @@ struct SettingsTabView: View {
     private var listView: some View {
         GlassList {
             profileHeaderSection
-
             headerScroll
             
-            teamsSection
-            
-            settingsSection
-
-            Section(header: Text("Notifications")) {
-                NavigationLink("Notifications list", destination: NotificationsView())
-            }
-
-            Section(header: Text("Help & Support")) {
-                NavigationLink("FAQ", destination: Text("FAQ View"))
-                NavigationLink("Contact Support", destination: Text("Contact Support View"))
-                NavigationLink("Report a Bug", destination: Text("Report a Bug View"))
-            }
-
-            Section(header: Text("Privacy & Data")) {
-                NavigationLink("Export My Logs", destination: Text("Export Logs View"))
-                NavigationLink("Delete My Account", destination: DeleteAccountView().environmentObject(AccountDeletionViewModel()).environmentObject(AuthViewModel()))
-            }
-
-            Section(header: Text("Advanced")) {
-                NavigationLink("Re-authenticate Google", destination: Text("Re-auth View"))
-                NavigationLink("Reset App Settings", destination: Text("Reset Settings View"))
-            }
-            
-            Section(header: Text("About")) {
-                NavigationLink("About App", destination: AppOverviewView())
-                NavigationLink("Policy Policy", destination: WebView(url: K.Links.privacyPolicy).edgesIgnoringSafeArea(.bottom).tint(K.Colors.accent))
-                NavigationLink("Terms of Use ", destination: WebView(url: K.Links.termsOfUse).edgesIgnoringSafeArea(.bottom).tint(K.Colors.accent))
+            ForEach(sections, id: \.0) { section, items in
+                Section(section.rawValue) {
+                    ForEach(items) { item in
+                        SettingNavigationLinkView(type: item)
+                    }
+                }
             }
             
             Section(footer: Text("Version 1.0.0")) {

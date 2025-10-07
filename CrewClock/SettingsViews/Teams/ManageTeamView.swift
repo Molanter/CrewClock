@@ -66,7 +66,7 @@ struct ManageTeamView: View {
             GlassList {
 
                 Section(header:
-                            StretchyHeader(color: team.color, image: team.image, height: headerHeight)
+                            StretchyHeader(color: team.color, image: team.image, teamId: team.id, height: headerHeight, canManageMembers: canManageMembers)
                 ) { }
                     .textCase(nil)
                     .listRowInsets(EdgeInsets())
