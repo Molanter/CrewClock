@@ -27,7 +27,7 @@ struct ClockTabView: View {
         NavigationStack {
             Group {
                 if isSearching {
-                    ClockSearchView()
+                    SearchView()
                 } else {
                     clock
                 }

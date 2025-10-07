@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct NoProjectsView: View {
-    var contentType: EmptyStateType = .noActiveProjects
+    var contentType: EmptyProjectStateType = .noActiveProjects
     
     var body: some View {
         HStack(spacing: 8) {

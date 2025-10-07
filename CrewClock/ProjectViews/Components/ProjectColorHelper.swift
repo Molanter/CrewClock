@@ -1,5 +1,5 @@
 //
-//   ProjectColorHelper.swift
+//  ProjectColorHelper.swift
 //  CrewClock
 //
 //  Created by Edgars Yarmolatiy on 6/6/25.

@@ -1,5 +1,5 @@
 //
-//  ClockSearchView.swift
+//  SearchView.swift
 //  CrewClock
 //
 //  Created by Edgars Yarmolatiy on 7/20/25.
@@ -9,7 +9,7 @@ import SwiftUI
 import Popovers
 import FirebaseAuth
 
-struct ClockSearchView: View {
+struct SearchView: View {
     @EnvironmentObject var searchUserViewModel: SearchUserViewModel
     @EnvironmentObject var userViewModel: UserViewModel
     @EnvironmentObject private var connectionsVM: ConnectionsViewModel

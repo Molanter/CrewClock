@@ -34,68 +34,14 @@ struct MyTeamsView: View {
             if !vm.errorMessage.isEmpty {
                 Section { Text(vm.errorMessage).foregroundStyle(.red) }
             }
-
-            // Owned
-            Section {
-                DisclosureGroup(isExpanded: $showOwned) {
-                    if vm.owned.isEmpty {
-                        Text("No teams yet.").foregroundStyle(.secondary)
-                    } else {
-                        ForEach(vm.owned) { team in
-                            row(team)
-                                .contextMenu { contextMenu(for: team) }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text("Owned by me")
-                        Spacer()
-                        Text("\(vm.owned.count)").foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            // Member of
-            Section {
-                DisclosureGroup(isExpanded: $showMember) {
-                    if vm.memberOf.isEmpty {
-                        Text("No teams joined yet.").foregroundStyle(.secondary)
-                    } else {
-                        ForEach(vm.memberOf) { team in
-                            row(team)
-                                .contextMenu { contextMenu(for: team) }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text("I’m a member")
-                        Spacer()
-                        Text("\(vm.memberOf.count)").foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            // Invites (always at bottom)
-            if !vm.invites.isEmpty {
-                Section {
-                    ForEach(vm.invites) { team in
-                        inviteRow(team)
-                    }
-                } header: {
-                    Text("Invites")
-                } footer: {
-                    Text("These teams have invited you. Accept to join or decline to ignore.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+           ownedSection  /// Owned
+            
+            memberOfSection /// Member of team
+            
+            invitesSection /// Invites (always at bottom)
         }
         .navigationTitle("My Teams")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { vm.start() } label: { Image(systemName: "arrow.clockwise") }
-            }
-        }
+        .toolbar { toolbar }
         .onAppear { vm.start() }
         .confirmationDialog(
             dialogTitle(),
@@ -117,22 +63,101 @@ struct MyTeamsView: View {
             Button("Cancel", role: .cancel) { }
         }
     }
-
-    // MARK: - Rows
-
-    private func row(_ team: TeamFB) -> some View {
-        NavigationLink {
-            ManageTeamView(team: team)
-        } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(team.name).font(.body)
-                Text("\(team.memberCount) member\(team.memberCount == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    
+    private var ownedSection: some View {
+        Section {
+            DisclosureGroup(isExpanded: $showOwned) {
+                if vm.owned.isEmpty {
+                    Text("No teams yet.").foregroundStyle(.secondary)
+                } else {
+                    ForEach(vm.owned) { team in
+                        row(team)
+                            .contextMenu { contextMenu(for: team) }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text("Owned by me")
+                    Spacer()
+                    Text("\(vm.owned.count)").foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+    
+    private var memberOfSection: some View {
+        Section {
+            DisclosureGroup(isExpanded: $showMember) {
+                if vm.memberOf.isEmpty {
+                    Text("No teams joined yet.").foregroundStyle(.secondary)
+                } else {
+                    ForEach(vm.memberOf) { team in
+                        row(team)
+                            .contextMenu { contextMenu(for: team) }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text("I’m a member")
+                    Spacer()
+                    Text("\(vm.memberOf.count)").foregroundStyle(.secondary)
+                }
             }
         }
     }
 
+    private var invitesSection: some View {
+        Group {
+            if !vm.invites.isEmpty {
+                Section {
+                    ForEach(vm.invites) { team in
+                        inviteRow(team)
+                    }
+                } header: {
+                    Text("Invites")
+                } footer: {
+                    Text("These teams have invited you. Accept to join or decline to ignore.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+    
+    private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button { vm.start() } label: { Image(systemName: "arrow.clockwise") }
+        }
+    }
+    // MARK: - Rows
+
+    @ViewBuilder
+    private func row(_ team: TeamFB) -> some View {
+        NavigationLink {
+            ManageTeamView(team: team)
+        } label: {
+            HStack {
+                imageRowGroup(team)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(team.name).font(.body)
+                    Text("\(team.memberCount) member\(team.memberCount == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func imageRowGroup(_ team: TeamFB) -> some View {
+        Image(systemName: team.image)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 35, height: 35)
+            .foregroundStyle(team.color)
+    }
+
+    @ViewBuilder
     private func inviteRow(_ team: TeamFB) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {

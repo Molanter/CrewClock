@@ -37,7 +37,7 @@ struct TabsView: View {
         ZStack(alignment: .bottom) {
             Group {
                 if showSearchBar {
-                    ClockSearchView()
+                    SearchView()
                 }else {
                     switch activeTab {
                     case .logs:
@@ -81,7 +81,7 @@ struct TabsView: View {
             }
             Tab(value: 3, role: .search) {
                 NavigationStack {
-                    ClockSearchView()
+                    SearchView()
                         .navigationTitle("Search")
                 }
                     .searchable(text: $publishedVars.searchClock, placement: .navigationBarDrawer, prompt: "Search People")
