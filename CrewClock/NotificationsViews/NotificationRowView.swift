@@ -14,6 +14,7 @@ struct NotificationRowView: View {
     @EnvironmentObject private var projectViewModel: ProjectViewModel
     @EnvironmentObject private var notificationsViewModel: NotificationsViewModel
 
+    @StateObject private var invitesVM = TeamInvitesViewModel()
     @StateObject private var teamsVM = MyTeamsViewModel()
 
     let notification: NotificationFB
@@ -94,7 +95,7 @@ struct NotificationRowView: View {
         Group {
             if let user = getUser(notification.fromUID) {
                 UserProfileImageCircle(user.profileImage)
-                    .frame(width: 25)
+                    .frame(width: 25, height: 25)
             }
         }
     }
@@ -149,6 +150,7 @@ struct NotificationRowView: View {
     
     private func getUser(_ uid: String) -> UserFB? {
         userViewModel.getUser(uid)
+        
     }
     
     private func mainAction(_ type: NotificationType) {
@@ -170,7 +172,7 @@ struct NotificationRowView: View {
             case .test:
                 return
             case .teamInvite:
-                Task { await teamsVM.acceptInvite(teamId: notification.relatedId) } }
+                Task { await invitesVM.acceptInvite(teamId: notification.relatedId) } }
         }
     }
     

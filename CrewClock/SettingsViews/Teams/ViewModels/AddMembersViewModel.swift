@@ -5,7 +5,6 @@
 //  Created by Edgars Yarmolatiy on 9/24/25.
 //
 
-
 import Foundation
 import FirebaseAuth
 import FirebaseFirestore
@@ -19,16 +18,13 @@ final class AddMembersViewModel: ObservableObject {
     private let db = Firestore.firestore()
     private let notificationsVM = NotificationsViewModel()
 
-    /// Saves selected members into teams/{teamId}.members (array of maps)
+    /// Saves selected members into the subcollection:
+    ///    teams/{teamId}/members/{uid}  (document id = uid)
     /// and sends push invites to only the *newly added* UIDs.
     ///
-    /// Each member map looks like:
-    /// { uid: String, role: "member", status: "invited", addedAt: <server timestamp> }
-    ///
-    /// - Parameters:
-    ///   - teamId: team doc id
-    ///   - senderName: name to show in the notification ("Alice")
-    ///   - senderUid: the inviter's uid (usually current user)
+    /// Each subcollection doc has:
+    /// { uid: String, role: "member", status: "invited", addedAt: Timestamp }
+    /// NOTE: This no longer writes to teams/{teamId}.members (array of maps).
     func saveMembersAndNotify(teamId: String, senderName: String, senderUid: String) async -> Bool {
         guard !members.isEmpty else {
             errorMessage = "Add at least one member."
@@ -41,36 +37,38 @@ final class AddMembersViewModel: ObservableObject {
 
         do {
             let teamRef = db.collection("teams").document(teamId)
-            let snap = try await teamRef.getDocument()
 
-            let teamName = (snap["name"] as? String) ?? "your team"
-            let existing = (snap["members"] as? [[String: Any]]) ?? []
+            // Read team name for notifications (read-only; we won't modify the team doc fields)
+            let teamSnap = try await teamRef.getDocument()
+            let teamName = (teamSnap["name"] as? String) ?? "your team"
 
-            // Build lookup of existing member UIDs
-            var existingByUID = Set<String>()
-            for m in existing {
-                if let uid = m["uid"] as? String { existingByUID.insert(uid) }
-            }
+            // Fetch existing member docs in the subcollection to avoid duplicates
+            let membersCol = teamRef.collection("members")
+            let existingSnap = try await membersCol.getDocuments()
 
-            // Who is new?
+            // Build a set of existing UIDs from subcollection document IDs
+            var existingByUID = Set<String>(existingSnap.documents.map { $0.documentID })
+
+            // Determine which selected UIDs are new (not already present)
             let newUIDs = members.filter { !existingByUID.contains($0) }
             guard !newUIDs.isEmpty else { return true }
 
-            // Append Firestore-safe entries
-            var updated = existing
+            // Create/merge subcollection member docs: teams/{teamId}/members/{uid}
+            let now = Timestamp(date: Date())
+            let batch = db.batch()
             for uid in newUIDs {
-                updated.append([
+                let memberRef = membersCol.document(uid) // doc id == uid
+                batch.setData([
                     "uid": uid,
-                    "role": "member",                     // String, not enum
+                    "role": "member",
                     "status": "invited",
-                    "addedAt": Date.now
-                ])
+                    "addedAt": now
+                ], forDocument: memberRef, merge: true)
             }
 
-            // Persist array
-            try await teamRef.setData(["members": updated], merge: true)
+            try await batch.commit()
 
-            // Notify the new folks
+            // Send notifications to the newly invited users
             let title = "Invite to join \(teamName)"
             let msg   = "\(senderName) invited you to join \(teamName). Open CrewClock to accept."
             for uid in newUIDs {
@@ -78,7 +76,7 @@ final class AddMembersViewModel: ObservableObject {
                     title: title,
                     message: msg,
                     timestamp: Date(),
-                    recipientUID: [uid],            // keep your model shape
+                    recipientUID: [uid],
                     fromUID: senderUid,
                     isRead: false,
                     type: NotificationType.teamInvite,

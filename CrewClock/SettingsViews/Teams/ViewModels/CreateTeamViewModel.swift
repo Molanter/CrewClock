@@ -49,11 +49,6 @@ final class CreateTeamViewModel: ObservableObject {
         defer { isCreating = false }
 
         let teamRef = db.collection("teams").document()
-        let ownerEntry: [String: Any] = [
-            "uid": uid,
-            "role": "owner",
-            "addedAt": Date.now
-        ]
         let hexColor = color.toHex() ?? "#000000"
         let data: [String: Any] = [
             "name": name,
@@ -61,12 +56,19 @@ final class CreateTeamViewModel: ObservableObject {
             "color": hexColor,
             "owner_uid": uid,
             "createdAt": Date.now,
-            "ownerUid": uid,
-            "members": [ownerEntry]
+            "ownerUid": uid
         ]
 
         do {
             try await teamRef.setData(data)
+            // Create owner as a subcollection doc (id == owner uid)
+            let ownerMemberRef = teamRef.collection("members").document(uid)
+            try await ownerMemberRef.setData([
+                "uid": uid,
+                "role": "owner",
+                "status": "active",
+                "addedAt": Date.now
+            ], merge: true)
             return teamRef.documentID
         } catch {
             errorMessage = "Failed to create team: \(error.localizedDescription)"

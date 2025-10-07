@@ -29,9 +29,10 @@ struct SettingRoundedButton: View {
         .padding(10)
         .frame(height: 75)
         .background {
-            TransparentBlurView(removeAllFilters: false)
-                .blur(radius: 9, opaque: true)
-                .background(.white.opacity(0.1))
+            Color.listRow
+//            TransparentBlurView(removeAllFilters: false)
+//                .blur(radius: 9, opaque: true)
+//                .background(.white.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: K.UI.cornerRadius, style: .continuous))
         }
     }
