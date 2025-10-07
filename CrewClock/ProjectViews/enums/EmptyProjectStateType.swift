@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-enum EmptyStateType {
+enum EmptyProjectStateType {
     case noActiveProjects
     case noFinishedProjects
     
