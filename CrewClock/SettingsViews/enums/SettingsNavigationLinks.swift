@@ -5,10 +5,25 @@
 //  Created by Edgars Yarmolatiy on 10/3/25.
 //
 
+
 import SwiftUI
 
+// MARK: - Hide tab bar while a destination is active (iOS 17+ compatible)
+struct HideTabBarWhileActive: ViewModifier {
+    @EnvironmentObject private var pub: PublishedVariebles
+    let key: String
+    func body(content: Content) -> some View {
+        content
+            .onAppear { pub.navLink = key }
+            .onDisappear {
+                // Only clear if we were the one that set it — avoids accidental clears when nested
+                if pub.navLink == key { pub.navLink = "" }
+            }
+    }
+}
+
 enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
-    case createTeam, viewTeams, preferences, appearance, notifications, faq, support, reportBug, exportLogs, deleteAccount, about, privacyPolicy, termsOfUse
+    case createTeam, viewTeams, preferences, appearance, notifications, faq, support, reportBug, exportLogs, deleteAccount, about, privacyPolicy, termsOfUse, myLogs
     
     var id: Self { self }
     
@@ -28,7 +43,7 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
         case .createTeam, .viewTeams:                 return .teams
         case .preferences, .appearance, .notifications: return .personalization
         case .faq, .support, .reportBug:              return .support
-        case .exportLogs:                             return .data
+        case .exportLogs, .myLogs:                             return .data
         case .privacyPolicy, .termsOfUse:             return .legal
         case .about:                                  return .about
         case .deleteAccount:                          return .danger
@@ -48,6 +63,7 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
         case .support: return 20
         case .reportBug: return 30
         case .exportLogs: return 10
+        case .myLogs: return 20
         case .privacyPolicy: return 10
         case .termsOfUse: return 20
         case .about: return 10
@@ -67,6 +83,7 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
         case .support: return "Support"
         case .reportBug: return "Report a Bug"
         case .exportLogs: return "Export Logs"
+        case .myLogs: return "My Logs"
         case .deleteAccount: return "Delete Account"
         case .about: return "About"
         case .privacyPolicy: return "Privacy Policy"
@@ -85,6 +102,7 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
         case .support: return "wrench.and.screwdriver"
         case .reportBug: return "ladybug"
         case .exportLogs: return "square.and.arrow.up"
+        case .myLogs: return "list.bullet"
         case .deleteAccount: return "person.fill.xmark"
         case .about: return "info.circle"
         case .privacyPolicy: return "hand.raised.circle"
@@ -96,7 +114,7 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
         switch self {
         // MARK: - Teams
         case .createTeam: return .green        // positive, “add” action
-        case .viewTeams: return .indigo        // organization-related
+        case .viewTeams: return .yellow        // organization-related
 
         // MARK: - Personalization
         case .preferences: return .teal        // neutral, thoughtful choice
@@ -110,6 +128,7 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
 
         // MARK: - Data
         case .exportLogs: return .cyan         // neutral “output/export”
+        case .myLogs: return .indigo
 
         // MARK: - Danger / destructive
         case .deleteAccount: return .red       // warning/destructive
@@ -142,6 +161,9 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
             Text("Report a Bug View")
         case .exportLogs:
             Text("Export Logs View")
+        case .myLogs:
+            LogsTabView()
+                .hideTabBarWhileActive("myLogs")
         case .deleteAccount:
             EmptyView()
         case .about:
@@ -157,3 +179,4 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
         }
     }
 }
+

@@ -18,8 +18,10 @@ struct SettingNavigationLinkView: View {
         NavigationLink {
             if type == .deleteAccount {
                 DeleteAccountView().environmentObject(AccountDeletionViewModel()).environmentObject(AuthViewModel())
+                    .hideTabBarWhileActive(type.title)
             }else {
                 type.destination
+                    .hideTabBarWhileActive(type.title)
             }
         }label: {
             linkLabel

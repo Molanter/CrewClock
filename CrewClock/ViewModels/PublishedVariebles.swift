@@ -9,7 +9,7 @@
 import SwiftUI
 
 class PublishedVariebles: ObservableObject {
-    
+    @Published var navLink: String = ""
     
     //MARK: Search Variables
     @Published var searchLog = ""
