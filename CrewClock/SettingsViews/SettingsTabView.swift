@@ -11,7 +11,6 @@ import FirebaseAuth
 struct SettingsTabView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
     @EnvironmentObject private var authViewModel: AuthViewModel
-    @EnvironmentObject var publishedVars: PublishedVariebles
     @EnvironmentObject var notificationsViewModel: NotificationsViewModel
     @EnvironmentObject private var connectionsVM: ConnectionsViewModel
     
@@ -25,7 +24,10 @@ struct SettingsTabView: View {
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink(destination: NotificationsView()) {
+                    NavigationLink {
+                        NotificationsView()
+                            .hideTabBarWhileActive("notifications")
+                    }label: {
                         Image(systemName: "bell")
                     }
                 }
@@ -58,42 +60,6 @@ struct SettingsTabView: View {
                 Spacer()
                     .frame(height: 50)
                     .listRowBackground(Color.clear)
-            }
-        }
-//        .scrollContentBackground(.hidden)
-//        .background {
-//            ListBackground()
-//                .ignoresSafeArea()   // under status/nav/tab bars
-//        }
-//        .listStyle(.insetGrouped)
-    }
-    
-    private var teamsSection: some View {
-        Section(header: Text("Temas")) {
-            NavigationLink("Create a Team") { CreateTeamView() }
-            if membershipVM.isLoading {
-                Text("loading...")
-            }else {
-                NavigationLink("My Teams") { MyTeamsView() }
-            }
-        }
-//        .listRowBackground(
-//            TransparentBlurView(removeAllFilters: false)
-//                .blur(radius: 9, opaque: true)
-//                .background(.red.opacity(0.15))
-//        )
-    }
-    
-    private var settingsSection: some View {
-        Section(header: Text("Settings")) {
-            NavigationLink("Preferences", destination: Text("Time Tracking Preferences View"))
-            NavigationLink("Linked Spreadsheet", destination: Text("Spreadsheet Settings View"))
-            NavigationLink {
-                Text("Appearance Settings View")
-            } label: {
-                Text("Theme & Font")
-                    .lineLimit(1)
-                    .truncationMode(.tail)
             }
         }
     }
@@ -134,7 +100,7 @@ struct SettingsTabView: View {
     private var connections: some View {
         NavigationLink {
             UserConnectionsView()
-//                    .searchable(text: $publishedVars.userSearch)
+                .hideTabBarWhileActive("myLogs")
         } label: {
             let count = connectionsVM.connections.filter { $0.status == "accepted" }.count
             SettingRoundedButton(image: false, text1: "Connections", text2: count.description)

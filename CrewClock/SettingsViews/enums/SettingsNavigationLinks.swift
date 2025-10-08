@@ -163,7 +163,6 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
             Text("Export Logs View")
         case .myLogs:
             LogsTabView()
-                .hideTabBarWhileActive("myLogs")
         case .deleteAccount:
             EmptyView()
         case .about:

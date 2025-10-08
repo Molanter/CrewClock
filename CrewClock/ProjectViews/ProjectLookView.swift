@@ -10,7 +10,7 @@ import FirebaseFirestore
 
 struct ProjectLookView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
-    
+    @EnvironmentObject var logsViewModel: LogsViewModel
     @EnvironmentObject private var projectViewModel: ProjectViewModel
     
     @Environment(\.dismiss) private var dismiss
@@ -68,9 +68,11 @@ struct ProjectLookView: View {
                 crewScroll
             }
             infoSection
+            
+            logsList
         }
     }
-    
+        
     private var checklistSection: some View {
         Section {
             ForEach(project?.checklist ?? []) { item in
@@ -97,8 +99,6 @@ struct ProjectLookView: View {
             }
         }header: {
             Text("Checklist")
-//                .font(.caption)
-//                .foregroundColor(.secondary)
         }
     }
     
@@ -120,8 +120,6 @@ struct ProjectLookView: View {
             }
         }header: {
             Text("Crew")
-//                .font(.caption)
-//                .foregroundColor(.secondary)
         }
     }
     
@@ -131,7 +129,7 @@ struct ProjectLookView: View {
                 HStack {
                     ForEach(project?.crew ?? [], id: \.self) { uid in
                         if let user = getUser(uid) {
-                            userScrollIcon(user)
+                            userProfileNameIcon(user)
                         }
                     }
                 }
@@ -177,10 +175,32 @@ struct ProjectLookView: View {
             }
         }header: {
             Text("Info")
-//                .font(.caption)
-//                .foregroundColor(.secondary)
         }
     }
+    
+    private var logsList: some View {
+        Section {
+            if let projectName = project?.name {
+                let matchingIndices = logsViewModel.logs.indices.filter {
+                    logsViewModel.logs[$0].projectName.lowercased() == projectName.lowercased()
+                }
+                if matchingIndices.isEmpty {
+                    Text("No logs found for this project.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(matchingIndices, id: \.self) { i in
+                        let log = logsViewModel.logs[i]
+                        LogRowView(selectedProject: $logsViewModel.logs[i], log: log)
+                    }
+                }
+            } else {
+                Text("Loading logs...")
+            }
+        } header: {
+            Text("Logs")
+        }
+    }
+
    
     @ViewBuilder
     private var background: some View {
@@ -213,7 +233,7 @@ struct ProjectLookView: View {
     }
     
     @ViewBuilder
-    private func userScrollIcon(_ user: UserFB) -> some View {
+    private func userProfileNameIcon(_ user: UserFB) -> some View {
         VStack(alignment: .center) {
             profileImage(user.profileImage)
             if let firstLetter = user.name.split(separator: " ").first/*.prefix(1)*/ {

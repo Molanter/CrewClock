@@ -25,8 +25,12 @@ struct MyTeamsView: View {
         case deleteTeam
         case leaveTeam
     }
-
+    
     var body: some View {
+        list
+    }
+
+    private var list: some View {
         GlassList {
             if vm.isLoading {
                 Section { ProgressView().frame(maxWidth: .infinity) }
@@ -34,7 +38,7 @@ struct MyTeamsView: View {
             if !vm.errorMessage.isEmpty {
                 Section { Text(vm.errorMessage).foregroundStyle(.red) }
             }
-           ownedSection  /// Owned
+            ownedSection  /// Owned
             
             memberOfSection /// Member of team
             
@@ -48,19 +52,7 @@ struct MyTeamsView: View {
             isPresented: $confirmDialogPresented,
             titleVisibility: .visible
         ) {
-            if let action = actionForTeam, let team = selectedTeam {
-                switch action {
-                case .deleteTeam:
-                    Button("Delete Team", role: .destructive) {
-                        vm.deleteTeam(teamId: team.id)
-                    }
-                case .leaveTeam:
-                    Button("Leave Team", role: .destructive) {
-                        vm.leaveTeam(teamId: team.id)
-                    }
-                }
-            }
-            Button("Cancel", role: .cancel) { }
+            confirmLeaveAlert
         }
     }
     
@@ -124,9 +116,36 @@ struct MyTeamsView: View {
         }
     }
     
+    private var confirmLeaveAlert: some View {
+        Group {
+            if let action = actionForTeam, let team = selectedTeam {
+                switch action {
+                case .deleteTeam:
+                    Button("Delete Team", role: .destructive) {
+                        vm.deleteTeam(teamId: team.id)
+                    }
+                case .leaveTeam:
+                    Button("Leave Team", role: .destructive) {
+                        vm.leaveTeam(teamId: team.id)
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        }
+    }
+    
+    @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Button { vm.start() } label: { Image(systemName: "arrow.clockwise") }
+        }
+        
+        ToolbarItem(placement: .bottomBar) {
+            NavigationLink {
+                CreateTeamView()
+            }label: {
+                Image(systemName: "person.2.badge.plus")
+            }
         }
     }
     // MARK: - Rows
