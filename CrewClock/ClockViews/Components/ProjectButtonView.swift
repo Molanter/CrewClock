@@ -24,7 +24,7 @@ struct ProjectButtonView: View {
             .confirmationDialog("Are you sure you want to delete this project?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
                     if let project = projectToDelete {
-                        projectsViewModel.deleteProject(project)
+                        Task { await projectsViewModel.deleteProject(project) }
                         projectToDelete = nil
                     }
                 }
@@ -79,7 +79,7 @@ struct ProjectButtonView: View {
     private var controlsButtonsSection: some View {
         Section {
             Button {
-                let newProject = ProjectModel(
+                let newProject = Project(
                     projectName: project.name,
                     owner: project.owner,
                     crew: project.crew,
@@ -90,7 +90,7 @@ struct ProjectButtonView: View {
                     finishDate: project.finishDate,
                     active: project.active ? false : true
                 )
-                projectsViewModel.updateProject(documentId: project.documentId, with: newProject)
+                Task { await projectsViewModel.updateProject(documentId: project.documentId, with: newProject) }
             }label: {
                 Label(project.active ? "Finish project" : "Activate project", systemImage: project.active ? "flag.pattern.checkered" : "restart")
             }

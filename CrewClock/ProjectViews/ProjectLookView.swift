@@ -78,7 +78,9 @@ struct ProjectLookView: View {
             ForEach(project?.checklist ?? []) { item in
                 HStack {
                     Button(action: {
-                        toggleChecklistItem(item)
+                        Task {
+                            await toggleChecklistItem(item)
+                        }
                     }) {
                         Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
                     }
@@ -90,7 +92,9 @@ struct ProjectLookView: View {
                 TextField("Add task", text: $newTask)
                 Spacer()
                 Button {
-                    addChecklistItem()
+                    Task {
+                        await addChecklistItem()
+                    }
                 } label: {
                     if !newTask.isEmpty {
                         Image(systemName: "plus.circle.fill")
@@ -294,18 +298,18 @@ struct ProjectLookView: View {
         userViewModel.getUser(uid)
     }
     
-    private func toggleChecklistItem(_ item: ChecklistItem) {
+    private func toggleChecklistItem(_ item: ChecklistItem) async {
         print("Toggling checklist item: \(item.text)")
         var updatedChecklist = project?.checklist ?? []
         if let index = updatedChecklist.firstIndex(where: { $0.id == item.id }),
            let documentId = project?.documentId {
             updatedChecklist[index].isChecked.toggle()
-            projectViewModel.updateChecklist(documentId: documentId, checklist: updatedChecklist)
+            await projectViewModel.updateChecklist(documentId: documentId, checklist: updatedChecklist)
             fetchProject()
         }
     }
     
-    private func addChecklistItem() {
+    private func addChecklistItem() async {
         print("Adding new checklist item: \(newTask)")
         guard !newTask.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         
@@ -315,7 +319,7 @@ struct ProjectLookView: View {
             let newItem = ChecklistItem(text: newTask.trimmingCharacters(in: .whitespaces))
             checklist.append(newItem)
             newTask = ""
-            projectViewModel.updateChecklist(documentId: documentId, checklist: checklist)
+            await projectViewModel.updateChecklist(documentId: documentId, checklist: checklist)
         }
     }
     
@@ -344,3 +348,4 @@ struct ProjectLookView: View {
         .environmentObject(UserViewModel())
         .environmentObject(ProjectViewModel())
 }
+

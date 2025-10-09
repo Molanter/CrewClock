@@ -11,7 +11,8 @@ import FirebaseAuth
 
 class ProjectViewModel: ObservableObject {
     @Published var projects: [ProjectFB] = []
-    private var db = Firestore.firestore()
+    private let manager = FirestoreManager()
+    private let db = Firestore.firestore()
 
     func fetchProjects() {
         guard let userId = Auth.auth().currentUser?.uid else { return }
@@ -59,78 +60,71 @@ class ProjectViewModel: ObservableObject {
         }
     }
 
-    func addProject(_ project: ProjectModel) {
-        let projectData: [String: Any] = [
+    func addProject(_ project: Project) async {
+        let checklistDicts = project.checklist.map { ["text": $0.text, "isChecked": $0.isChecked] }
+        let data: [String: Any] = [
             "projectName": project.projectName,
             "owner": project.owner,
             "crew": project.crew,
-            "checklist": project.checklist.map { ["text": $0.text, "isChecked": $0.isChecked] },
-            "comments": project.comments,
-            "color": project.color,
-            "startDate": Timestamp(date: project.startDate),
-            "finishDate": Timestamp(date: project.finishDate),
-            "active": project.active,
-            "timestamp": Timestamp(date: Date())
-        ]
-
-        db.collection("projects").addDocument(data: projectData) { error in
-            if let error = error {
-                print("Error adding project: \(error.localizedDescription)")
-            }else {
-                print("✅ Project added successfully")
-                self.fetchProjects()
-            }
-        }
-    }
-
-    func updateProject(documentId: String, with project: ProjectModel) {
-        let ref = db.collection("projects").document(documentId)
-
-        let updateData: [String: Any] = [
-            "projectName": project.projectName,
-            "owner": project.owner,
-            "crew": project.crew,
-            "checklist": project.checklist.map { ["text": $0.text, "isChecked": $0.isChecked] },
+            "checklist": checklistDicts,
             "comments": project.comments,
             "color": project.color,
             "startDate": Timestamp(date: project.startDate),
             "finishDate": Timestamp(date: project.finishDate),
             "active": project.active
         ]
+        do {
+            let projectId = try await manager.add(data, to: FSPath.Projects())
+            print("✅ Project added successfully with id: \(projectId)")
+            await MainActor.run { self.fetchProjects() }
+        } catch {
+            print("❌ Error adding project: \(error.localizedDescription)")
+        }
+    }
 
-        ref.updateData(updateData) { error in
-            if let error = error {
-                print("❌ Error updating project: \(error.localizedDescription)")
-            } else {
-                print("✅ Project updated successfully")
-                self.fetchProjects()
-            }
+    func updateProject(documentId: String, with project: Project) async {
+        let checklistDicts = project.checklist.map { ["text": $0.text, "isChecked": $0.isChecked] }
+        let data: [String: Any] = [
+            "projectName": project.projectName,
+            "owner": project.owner,
+            "crew": project.crew,
+            "checklist": checklistDicts,
+            "comments": project.comments,
+            "color": project.color,
+            "startDate": Timestamp(date: project.startDate),
+            "finishDate": Timestamp(date: project.finishDate),
+            "active": project.active
+        ]
+        do {
+            _ = try await manager.upsert(data, at: FSPath.Project(id: documentId), merge: true)
+            print("✅ Project updated successfully")
+            await MainActor.run { self.fetchProjects() }
+        } catch {
+            print("❌ Error updating project: \(error.localizedDescription)")
         }
     }
     
-    func updateChecklist(documentId: String, checklist: [ChecklistItem]) {
-        let ref = db.collection("projects").document(documentId)
-        let checklistData = checklist.map { ["text": $0.text, "isChecked": $0.isChecked] }
-        
-        ref.updateData(["checklist": checklistData]) { error in
-            if let error = error {
-                print("❌ Error updating checklist: \(error.localizedDescription)")
-            } else {
-                print("✅ Checklist updated successfully")
-                self.fetchProjects()
-            }
+    func updateChecklist(documentId: String, checklist: [ChecklistItem]) async {
+        let checklistDicts = checklist.map { ["text": $0.text, "isChecked": $0.isChecked] }
+        let data: [String: Any] = [
+            "checklist": checklistDicts
+        ]
+        do {
+            _ = try await manager.upsert(data, at: FSPath.Project(id: documentId), merge: true)
+            print("✅ Checklist updated successfully")
+            await MainActor.run { self.fetchProjects() }
+        } catch {
+            print("❌ Error updating checklist: \(error.localizedDescription)")
         }
     }
 
-    func deleteProject(_ project: ProjectFB) {
-        let id = project.id
-        db.collection("projects").document(id).delete { error in
-            if let error = error {
-                print("Error deleting project: \(error.localizedDescription)")
-            }else {
-                print("✅ Project deleted successfully")
-                self.fetchProjects()
-            }
+    func deleteProject(_ project: ProjectFB) async {
+        do {
+            try await manager.delete(at: FSPath.Project(id: project.id))
+            print("✅ Project deleted successfully")
+            await MainActor.run { self.fetchProjects() }
+        } catch {
+            print("❌ Error deleting project: \(error.localizedDescription)")
         }
     }
     

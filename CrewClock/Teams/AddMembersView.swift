@@ -21,6 +21,7 @@ struct AddMembersView: View {
     
     @State var searchText = ""
     @State var errorMessage = ""
+    
     var body: some View {
         list
             .navigationTitle("Add Members")
@@ -31,29 +32,7 @@ struct AddMembersView: View {
                     }
                 }
             }
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    isSearchFocused = true
-                    // Preload initial members if provided and the VM is empty
-                    if vmMembers.members.isEmpty && !initialMembers.isEmpty {
-                        let combined = vmMembers.members + initialMembers
-                        vmMembers.members = Array(Set(combined))
-                    }
-                }
-                // Build role map from the members passed in
-                let roleMap = Dictionary(uniqueKeysWithValues: existingMembers.map { ($0.uid, $0.role) })
-                existingRoles = roleMap
-
-                // Merge any preloaded members + existing members UIDs, keep unique & preserve order
-                var seen = Set<String>()
-                let merged = vmMembers.members + initialMembers + existingMembers.map { $0.uid }
-                vmMembers.members = merged.filter { seen.insert($0).inserted }
-
-                // Ensure default role choice for new (non-existing) members
-                for uid in vmMembers.members where existingRoles[uid] == nil {
-                    if selectedRoles[uid] == nil { selectedRoles[uid] = .member }
-                }
-            }
+            .onAppear { onAppear() }
     }
     
     private var list: some View {
@@ -77,14 +56,12 @@ struct AddMembersView: View {
     }
     
     private var searchSection: some View {
-        Section {
-            searchView
-            if !searchText.isEmpty {
-                searchResults
-            }
-        } header: {
-            Text("Search to Add User")
-        }
+        UserSearchAddField(
+            exclude: .constant(vmMembers.members),
+            usersArray: .constant(vmMembers.members),
+            showAddedCrewList: false
+        )
+
     }
     
     private var membersSection: some View {
@@ -268,6 +245,30 @@ struct AddMembersView: View {
                 senderUid: senderUid
             )
             if ok { dismiss() /* or pop to root using the NavigationPath as discussed */ }
+        }
+    }
+    
+    private func onAppear() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            isSearchFocused = true
+            // Preload initial members if provided and the VM is empty
+            if vmMembers.members.isEmpty && !initialMembers.isEmpty {
+                let combined = vmMembers.members + initialMembers
+                vmMembers.members = Array(Set(combined))
+            }
+        }
+        // Build role map from the members passed in
+        let roleMap = Dictionary(uniqueKeysWithValues: existingMembers.map { ($0.uid, $0.role) })
+        existingRoles = roleMap
+
+        // Merge any preloaded members + existing members UIDs, keep unique & preserve order
+        var seen = Set<String>()
+        let merged = vmMembers.members + initialMembers + existingMembers.map { $0.uid }
+        vmMembers.members = merged.filter { seen.insert($0).inserted }
+
+        // Ensure default role choice for new (non-existing) members
+        for uid in vmMembers.members where existingRoles[uid] == nil {
+            if selectedRoles[uid] == nil { selectedRoles[uid] = .member }
         }
     }
 }

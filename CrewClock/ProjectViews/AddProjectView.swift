@@ -20,7 +20,7 @@ struct AddProjectView: View {
 
     private let colorsStringArray: [String] = ["blue", "yellow", "orange", "cyan", "red", "green", "mint", "purple", "pink", "indigo", "brown"]
 
-    @State private var project: ProjectModel
+    @State private var project: Project
     @State private var showError = false
     @State private var newChecklistItem: String = ""
     @State private var errorMessage: String = ""
@@ -36,7 +36,7 @@ struct AddProjectView: View {
         self.editingProject = editingProject
         let user = Auth.auth().currentUser
         if let editing = editingProject {
-            _project = State(initialValue: ProjectModel(
+            _project = State(initialValue: Project(
                 projectName: editing.name,
                 owner: editing.owner,
                 crew: editing.crew,
@@ -48,7 +48,7 @@ struct AddProjectView: View {
                 active: editing.active
             ))
         } else {
-            _project = State(initialValue: ProjectModel(
+            _project = State(initialValue: Project(
                 projectName: "",
                 owner: user?.uid ?? "",
                 crew: [],
@@ -69,26 +69,7 @@ struct AddProjectView: View {
                 .toolbar { toolbarContent }
                 .onAppear { onAppearFunc(); DispatchQueue.main.async { focus = .crewSearch } }
 
-                // Debounced search driven from view-level task
-                .task(id: crewSearch) {
-                    let q = crewSearch.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !q.isEmpty else {
-                        searchUserViewModel.foundUIDs = []
-                        return
-                    }
-                    try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
-                    // If user kept typing during sleep, this task has already been cancelled/restarted
-
-                    var exclude = Set(project.crew)
-                    exclude.insert(project.owner)
-                    if let me = Auth.auth().currentUser?.uid { exclude.insert(me) }
-
-                    searchUserViewModel.searchUsers(with: q, alsoExclude: exclude)
-                }
-                // Keep focus when results repopulate to avoid keyboard drop
-                .onChange(of: searchUserViewModel.foundUIDs) { _ in
-                    if !crewSearch.isEmpty { focus = .crewSearch }
-                }
+                
         }
     }
 
@@ -151,59 +132,11 @@ struct AddProjectView: View {
     }
 
     private var crewSection: some View {
-        Section(header: Text("Crew")) {
-            UserRowView(uid: project.owner)
-            if !project.crew.isEmpty { crewList }
-
-            TextField("Search to add crew", text: $crewSearch)
-                .focused($focus, equals: .crewSearch)
-                .textInputAutocapitalization(.never)
-                .disableAutocorrection(true)
-                .submitLabel(.search)
-
-            if !crewSearch.isEmpty {
-                crewSearchingView
-            }
-        }
-    }
-
-    // MARK: Crew search results
-    private var crewSearchingView: some View {
-        let me = userViewModel.user?.uid
-        let crewSet = Set(project.crew)
-        let results = searchUserViewModel.foundUIDs.filter { $0 != me && !crewSet.contains($0) }
-
-        return VStack(alignment: .leading) {
-            if results.isEmpty {
-                Text("No users found.").foregroundColor(.secondary)
-            } else {
-                ForEach(results, id: \.self) { uid in
-                    HStack {
-                        UserRowView(uid: uid)
-                        Spacer()
-                        Button("Add") {
-                            crewSearch = ""
-                            project.crew.append(uid)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: Crew list
-    private var crewList: some View {
-        ForEach(project.crew, id: \.self) { uid in
-            HStack {
-                Button(action: { removeUserFromCrew(uid) }) {
-                    Image(systemName: "minus.circle.fill")
-                        .symbolRenderingMode(.multicolor)
-                        .foregroundColor(.red)
-                }
-                UserRowView(uid: uid)
-            }
-        }
+        UserSearchAddField(
+            exclude: .constant(project.crew),
+            usersArray: $project.crew,
+            showAddedCrewList: true
+        )
     }
 
     // MARK: Details
@@ -300,7 +233,7 @@ struct AddProjectView: View {
         if project.owner == user?.displayName ?? "" {
             project.owner = user?.uid ?? ""
         }
-        projectViewModel.addProject(project)
+        Task { await projectViewModel.addProject(project) }
         notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
         dismiss()
     }
@@ -335,7 +268,7 @@ struct AddProjectView: View {
     // Update existing project
     private func updateProject() {
         if let editingProject = editingProject {
-            projectViewModel.updateProject(documentId: editingProject.documentId, with: project)
+            Task { await projectViewModel.updateProject(documentId: editingProject.documentId, with: project) }
             notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
             dismiss()
         }
@@ -357,12 +290,12 @@ struct AddProjectView: View {
         }
     }
 
-    // Crew ops
-    private func removeUserFromCrew(_ uid: String) {
-        if let index = project.crew.firstIndex(of: uid) {
-            project.crew.remove(at: index)
-        }
-    }
+//    // Crew ops
+//    private func removeUserFromCrew(_ uid: String) {
+//        if let index = project.crew.firstIndex(of: uid) {
+//            project.crew.remove(at: index)
+//        }
+//    }
 
     // Check if project name is used
     private var isProjectNameUsed: Bool {
