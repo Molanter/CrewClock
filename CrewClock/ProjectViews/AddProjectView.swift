@@ -65,7 +65,7 @@ struct AddProjectView: View {
     var body: some View {
         NavigationStack {
             form
-                .navigationTitle("Add Project")
+                .navigationTitle((editingProject != nil) ? "Editing Project" : "Add Project")
                 .toolbar { toolbarContent }
                 .onAppear { onAppearFunc(); DispatchQueue.main.async { focus = .crewSearch } }
 

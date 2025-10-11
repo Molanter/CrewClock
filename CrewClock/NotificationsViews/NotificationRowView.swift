@@ -19,6 +19,7 @@ struct NotificationRowView: View {
 
     let notification: NotificationFB
     var auth = Auth.auth()
+    private let manager = FirestoreManager()
     
     private var formattedTimestamp: String {
         let formatter = DateFormatter()
@@ -162,7 +163,18 @@ struct NotificationRowView: View {
                 projectViewModel.addCrewMember(documentId: notification.relatedId, crewMember: notification.relatedId)
                 notificationsViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { bool in}
             case .taskAssigned:
-                return
+                Task {
+                    do {
+                        _ = try await manager.upsert(
+                            ["status": "accepted"],
+                            at: FSPath.Task(id: notification.relatedId),
+                            merge: true
+                        )
+                        notificationsViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .accepted) { _ in }
+                    } catch {
+                        print("Failed to accept task and notify: \(error)")
+                    }
+                }
             case .commentMention:
                 return
             case .scheduleUpdate:
@@ -172,7 +184,8 @@ struct NotificationRowView: View {
             case .test:
                 return
             case .teamInvite:
-                Task { await invitesVM.acceptInvite(teamId: notification.relatedId) } }
+                Task { await invitesVM.acceptInvite(teamId: notification.relatedId) }
+            }
         }
     }
     
@@ -184,7 +197,18 @@ struct NotificationRowView: View {
             case .projectInvite:
                 notificationsViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
             case .taskAssigned:
-                notificationsViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { bool in}
+                Task {
+                    do {
+                        _ = try await manager.upsert(
+                            ["status": "rejected"],
+                            at: FSPath.Task(id: notification.relatedId),
+                            merge: true
+                        )
+                        notificationsViewModel.updateNotificationStatus(notificationId: notification.notificationId, newStatus: .rejected) { _ in }
+                    } catch {
+                        print("Failed to reject task and notify: \(error)")
+                    }
+                }
             case .commentMention:
                 return
             case .scheduleUpdate:
@@ -197,7 +221,7 @@ struct NotificationRowView: View {
                 teamsVM.leaveTeam(teamId: notification.relatedId)
             }
         }
-        }
+    }
     
     private func connectFunc() {
         connectionsVM.acceptConnection(from: notification.fromUID, notificationId: notification.notificationId)

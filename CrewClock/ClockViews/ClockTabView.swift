@@ -14,6 +14,7 @@ struct ClockTabView: View {
     
     @State private var showAddProject: Bool = false
     @State private var showAddLog: Bool = false
+    @State private var showAddTask: Bool = false
     
     var activeProjects: [ProjectFB] {
         projectsViewModel.projects.filter { $0.active }.sorted { $0.finishDate > $1.finishDate }
@@ -33,6 +34,7 @@ struct ClockTabView: View {
                 }
             }
             .navigationTitle("Clock")
+            .toolbar { toolbar }
         }
     }
     
@@ -50,11 +52,14 @@ struct ClockTabView: View {
             AddLogView(showAddLogSheet: $showAddLog)
                 .tint(K.Colors.accent)
         }
+        .sheet(isPresented: $showAddTask) {
+            AddTaskView()
+        }
     }
     
     private var list: some View {
         GlassList {
-            controlsSection
+//            controlsSection
             activeProjectsSection
             inactiveProjectsSection
             Section {
@@ -68,7 +73,7 @@ struct ClockTabView: View {
     private var controlsSection: some View {
         Section {
             tableButtons
-        } header: { Text("Project controls") }
+        } header: { Text("Controls") }
     }
     
     private var activeProjectsSection: some View {
@@ -144,11 +149,44 @@ struct ClockTabView: View {
             button("Add Log", "plus", Color.yellow) {
                 self.showAddLog.toggle()
             }
+            button("Add Task", "checkmark.circle.badge.plus", Color.green) {
+                self.showAddTask.toggle()
+            }
         }
         .buttonStyle(.plain)
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())
     }
+    
+    private var toolbarMenu: some View {
+        Menu {
+            Button {
+                self.showAddProject.toggle()
+            }label: {
+                Label("Add Project", systemImage: "folder.badge.plus")
+            }
+            Button {
+                self.showAddLog.toggle()
+            }label: {
+                Label("Add Log", systemImage: "document.badge.plus")
+            }
+            Button {
+                self.showAddTask.toggle()
+            }label: {
+                Label("Add Task", systemImage: "checkmark.circle.badge.plus")
+            }
+        }label: {
+            Image(systemName: "plus")
+        }
+    }
+    
+    private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            toolbarMenu
+        }
+    }
+    
+    //MARK: - Functions
     
     @ViewBuilder
     private func tableButtonLabel(_ text: String, _ image: String, _ color: Color) -> some View {
@@ -161,7 +199,8 @@ struct ClockTabView: View {
                             .fill(color)
                     }
                 Text(text)
-                    .font(.headline)
+                    .font(.body)
+                    .bold()
             }
             Spacer()
         }

@@ -30,7 +30,7 @@ public struct GlassList<Content: View>: View {
 //        }
         .listStyle(.insetGrouped)
 //        .scrollContentBackground(.hidden)
-//        .scrollDismissesKeyboard(.interactively) // restore keyboard handling
+        .scrollDismissesKeyboard(.interactively) // restore keyboard handling
     }
 }
 

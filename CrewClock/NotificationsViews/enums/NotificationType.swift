@@ -31,6 +31,27 @@ enum NotificationType: String, Codable {
         }
     }
     
+    var title: String {
+        switch self {
+        case .connectInvite:
+            return "Connect Request"
+        case .connectionAccepted:
+            return "Connection Accepted"
+        case .projectInvite:
+            return "Invitation to join to Project"
+        case .commentMention:
+            return "You were mentioned"
+        case .scheduleUpdate:
+            return "Schedule Update"
+        case . test:
+            return "TEST push notification"
+        case .teamInvite:
+            return "Join my Team"
+        case .taskAssigned:
+            return "Task Assigned"
+        }
+    }
+    
     var mainAction: String {
         switch self {
         case .connectInvite, .connectionAccepted:

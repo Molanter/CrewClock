@@ -57,8 +57,8 @@ struct AddMembersView: View {
     
     private var searchSection: some View {
         UserSearchAddField(
-            exclude: .constant(vmMembers.members),
-            usersArray: .constant(vmMembers.members),
+            exclude: $vmMembers.members,
+            usersArray: $vmMembers.members,
             showAddedCrewList: false
         )
 

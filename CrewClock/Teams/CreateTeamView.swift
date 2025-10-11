@@ -137,8 +137,10 @@ struct CreateTeamView: View {
                             .fill(colorLabel)
                             .frame(width: 15, height: 15)
                         Text(K.Colors.colorName(colorLabel))
+                        Image(systemName: "chevron.up.chevron.down")
                     }
                 }
+                .buttonStyle(.plain)
             }
         }
     }

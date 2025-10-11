@@ -41,6 +41,7 @@ struct SettingsTabView: View {
         GlassList {
             profileHeaderSection
             headerScroll
+                .listSectionSpacing(10)
             
             ForEach(sections, id: \.0) { section, items in
                 Section(section.rawValue) {
@@ -82,20 +83,22 @@ struct SettingsTabView: View {
         }
     }
     
+    //MARK: Header Scroll
     ///Header Scroll with buttons
     private var headerScroll: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 15) {
-                connections
-                pushNotification
-                signOut
+        Section {
+            ScrollView(.horizontal) {
+                HStack(spacing: 15) {
+                    connections
+                    pushNotification
+                    signOut
+                }
             }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
         }
-        .listRowInsets(EdgeInsets())
-        .listRowBackground(Color.clear)
     }
     
-    //MARK: Header Scroll
     ///Connections NavigationLink
     private var connections: some View {
         NavigationLink {
