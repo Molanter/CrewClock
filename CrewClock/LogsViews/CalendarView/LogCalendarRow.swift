@@ -1,5 +1,5 @@
 //
-//  TaskRow.swift
+//  LogCalendarRow.swift
 //  CrewClock
 //
 //  Created by Edgars Yarmolatiy on 8/1/25.
@@ -8,7 +8,7 @@
 import SwiftUI
 import FirebaseFirestore
 
-struct TaskRow: View {
+struct LogCalendarRow: View {
     @EnvironmentObject private var logsViewModel: LogsViewModel
     @EnvironmentObject private var projectViewModel: ProjectViewModel
     
@@ -190,7 +190,7 @@ struct TaskRow: View {
         ],
         documentId: "log_001"
     )
-    TaskRow(log: exampleLog, isEmpty: true, selectedProject: .constant(exampleLog))
+    LogCalendarRow(log: exampleLog, isEmpty: true, selectedProject: .constant(exampleLog))
         .environmentObject(ProjectViewModel())
         .environmentObject(LogsViewModel())
 }

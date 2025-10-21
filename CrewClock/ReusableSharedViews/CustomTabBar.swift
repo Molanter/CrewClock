@@ -13,6 +13,7 @@ enum TabItem: String, CaseIterable {
     case logs = "Logs"
     case clock = "Clock"
     case settings = "Settings"
+    case tasks = "Tasks"
     
     var symbol: String {
         switch self {
@@ -22,6 +23,8 @@ enum TabItem: String, CaseIterable {
             return "clock"
         case .settings:
             return "gearshape"
+        case .tasks:
+            return "checklist"
         }
     }
     

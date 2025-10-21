@@ -165,10 +165,10 @@ struct CalendarLogsView: View {
                 ],
                 documentId: "dummy"
             )
-            TaskRow(log: dummyLog, isEmpty: true, selectedProject: .constant(dummyLog))
+            LogCalendarRow(log: dummyLog, isEmpty: true, selectedProject: .constant(dummyLog))
         } else {
             ForEach(filteredLogs) { log in
-                TaskRow(log: log, isEmpty: false, selectedProject: .constant(log))
+                LogCalendarRow(log: log, isEmpty: false, selectedProject: .constant(log))
             }
         }
     }

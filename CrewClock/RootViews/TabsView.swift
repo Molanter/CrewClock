@@ -97,6 +97,9 @@ struct TabsView: View {
                     CalendarLogsView()
                 case .clock:
                     ClockTabView()
+                case .tasks:
+//                    TasksView()
+                    Text("rtgh")
                 case .settings:
                     SettingsTabView()
                 }
@@ -106,7 +109,6 @@ struct TabsView: View {
     }
 }
 
-//@SceneStorage("selectedTab") private var selectedTab = 0
 
 #Preview {
     TabsView()
