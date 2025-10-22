@@ -12,7 +12,6 @@ struct TaskRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            statusPill(task.status)
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title).font(.headline)
                 HStack(spacing: 8) {
@@ -21,17 +20,20 @@ struct TaskRow: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    if !task.teamId.isEmpty {
-                        Text("Team").font(.caption2).padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(Capsule().fill(.thinMaterial))
-                    }
+//                    if ((task.teamId) == nil) {
+//                        Text("Team").font(.caption2).padding(.horizontal, 6).padding(.vertical, 2)
+//                            .background(Capsule().fill(.thinMaterial))
+//                    }
                 }
             }
             Spacer()
-            Text(task.priority.capitalized)
-                .font(.caption)
-                .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(Capsule().fill(.ultraThinMaterial))
+            VStack {
+                statusPill(task.status)
+                Text(task.priorityLabel.capitalized)
+                    .font(.caption)
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(Capsule().fill(.ultraThinMaterial))
+            }
         }
     }
 

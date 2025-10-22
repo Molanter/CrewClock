@@ -36,7 +36,7 @@ struct TasksView: View {
                     NavigationLink {
                         TaskDetailView(task: task, vm: vm)
                     } label: {
-//                        TaskRow(task: task)
+                        TaskRow(task: task)
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -53,7 +53,7 @@ struct TasksView: View {
         guard !search.trimmingCharacters(in: .whitespaces).isEmpty else { return vm.tasks }
         return vm.tasks.filter {
             $0.title.localizedCaseInsensitiveContains(search) ||
-            $0.notes.localizedCaseInsensitiveContains(search)
+            $0.description.localizedCaseInsensitiveContains(search)
         }
     }
 }

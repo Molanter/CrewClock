@@ -11,15 +11,32 @@ import FirebaseFirestore
 struct TaskModel: Identifiable, Codable {
     @DocumentID var id: String?
     var title: String
-    var notes: String
-    var status: String
-    var priority: String
+    var description: String              // was notes
+    var status: String                   // e.g. "open"
+    var priority: Int                    // Int in your docs
     var dueAt: Timestamp?
     var createdAt: Timestamp
-    var createdBy: String
-    var assignedTo: String?     // nil or uid
-    var teamId: String          // "" if none
-    var lastUpdatedAt: Timestamp
+    var creatorUID: String               // was createdBy
+    var updatedAt: Timestamp             // was lastUpdatedAt
+    var assigneeUIDs: [String]?          // was assignedTo: String?
+    var teamId: String?                 // optional team scope
+    var projectId: String?               // optional, present in your docs
 
-    static let collection = Firestore.firestore().collection("tasks")
+    static var collection: CollectionReference {
+        Firestore.firestore().collection("tasks")
+    }
+}
+
+
+extension TaskModel {
+    var priorityLabel: String {
+        switch priority {
+        case 1: return "Low"
+        case 2: return "Normal"
+        case 3: return "Medium"
+        case 4: return "High"
+        case 5: return "Critical"
+        default: return "Unknown"
+        }
+    }
 }

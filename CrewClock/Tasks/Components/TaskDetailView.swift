@@ -18,11 +18,11 @@ struct TaskDetailView: View {
         Form {
             Section("Info") {
                 Text(task.title).font(.headline)
-                if !task.notes.isEmpty { Text(task.notes) }
+                if !task.description.isEmpty { Text(task.description) }
                 if let due = task.dueAt?.dateValue() {
                     LabeledContent("Due", value: due.formatted(date: .abbreviated, time: .omitted))
                 }
-                LabeledContent("Priority", value: task.priority.capitalized)
+                LabeledContent("Priority", value: task.priorityLabel.capitalized)
                 LabeledContent("Status", value: task.status.capitalized)
             }
 
