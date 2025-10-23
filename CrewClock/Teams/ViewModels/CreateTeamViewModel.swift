@@ -14,19 +14,6 @@ import FirebaseAuth
 import FirebaseFirestore
 
 
-#if canImport(UIKit)
-import UIKit
-extension Color {
-    func toHex() -> String? {
-        let ui = UIColor(self)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        guard ui.getRed(&r, green: &g, blue: &b, alpha: &a) else { return nil }
-        let ri = Int(round(r * 255)), gi = Int(round(g * 255)), bi = Int(round(b * 255))
-        return String(format: "#%02X%02X%02X", ri, gi, bi)
-    }
-}
-#endif // canImport(UIKit)
-
 @MainActor
 final class CreateTeamViewModel: ObservableObject {
     @Published var isCreating = false
@@ -49,7 +36,7 @@ final class CreateTeamViewModel: ObservableObject {
         defer { isCreating = false }
 
         let teamRef = db.collection("teams").document()
-        let hexColor = color.toHex() ?? "#000000"
+        let hexColor = color.toHexString() ?? "#000000"
         let data: [String: Any] = [
             "name": name,
             "image": image,
@@ -112,7 +99,7 @@ extension CreateTeamViewModel {
 
         if let color = color {
             #if canImport(UIKit)
-            if let hex = color.toHex() {
+            if let hex = color.toHexString() {
                 updates["color"] = hex           // store as hex string
             } else {
                 updates["color"] = "#000000"     // fallback

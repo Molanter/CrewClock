@@ -22,20 +22,6 @@ extension TeamFB {
     }
 }
 
-#if canImport(UIKit)
-private extension Color {
-    init?(hex: String) {
-        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        if s.hasPrefix("#") { s.removeFirst() }
-        guard s.count == 6,
-              let r = Int(s.prefix(2), radix: 16),
-              let g = Int(s.dropFirst(2).prefix(2), radix: 16),
-              let b = Int(s.dropFirst(4), radix: 16) else { return nil }
-        self = Color(red: Double(r)/255.0, green: Double(g)/255.0, blue: Double(b)/255.0)
-    }
-}
-#endif
-
 @MainActor
 final class MyTeamsViewModel: ObservableObject {
     // MARK: - Published state

@@ -18,7 +18,7 @@ struct TaskModel: Identifiable, Codable, Hashable {
     var createdAt: Timestamp?
     var creatorUID: String               // was createdBy
     var updatedAt: Timestamp?             // was lastUpdatedAt
-    var assigneeUIDs: [String]?          // was assignedTo: String?
+    var assigneeUIDs: [String: String]?  // id -> "user" | "team"
     var teamId: String?                 // optional team scope
     var projectId: String?               // optional, present in your docs
 

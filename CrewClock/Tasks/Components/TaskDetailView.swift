@@ -46,7 +46,7 @@ struct TaskDetailView: View {
         GlassList {
             infoSection(task)
             if let crewUids = task.assigneeUIDs {
-                crewSection(uids: crewUids)
+                crewSection(entities: crewUids)
             }
             actionsSection
         }
@@ -90,10 +90,15 @@ struct TaskDetailView: View {
     }
     //MARK: - ViewBuilders
     @ViewBuilder
-    private func crewSection(uids: [String]) -> some View {
-        Section("Asigned to") {
-            ForEach (uids, id:\.self) { uid in
-                   UserRowView(uid: uid)
+    private func crewSection(entities: [String: String]) -> some View {
+        Section("Assigned to") {
+            ForEach(Array(entities.keys), id: \.self) { id in
+                let kind = entities[id]?.lowercased() ?? "user"
+                if kind == "team" {
+                    TeamRowView(teamId: id)
+                } else {
+                    UserRowView(uid: id)
+                }
             }
         }
     }

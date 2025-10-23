@@ -24,6 +24,7 @@ struct AddTaskView: View {
     @State private var projectName: String = ""
     @State private var usersArray: [String] = []
     @State private var didPrefill = false
+    @State private var selectedEntities: [String: String] = [:] // id -> "user" | "team"
     
     let priorities = ["Low", "Medium", "High"]
     
@@ -33,8 +34,8 @@ struct AddTaskView: View {
                 detailsSection
                 
                 UserSearchAddField(
-                    exclude: .constant(usersArray),
-                    usersArray: $usersArray,
+                    exclude: $selectedEntities,
+                    selectedEntities: $selectedEntities,
                     showAddedCrewList: true
                 )
                 
@@ -46,6 +47,9 @@ struct AddTaskView: View {
             .toolbar { toolbar }
             .onAppear {
                 checkExist()
+            }
+            .onChange(of: selectedEntities) { newValue in
+                usersArray = newValue.compactMap { $0.value == "user" ? $0.key : nil }
             }
         }
     }
@@ -126,14 +130,15 @@ struct AddTaskView: View {
             "updatedAt": Timestamp(date: Date()),
             "createdAt": Timestamp(date: Date())
         ]
-        if !usersArray.isEmpty { data["assigneeUIDs"] = usersArray }
+        if !selectedEntities.isEmpty { data["assigneeUIDs"] = selectedEntities }
         if hasDueDate { data["dueAt"] = Timestamp(date: dueDate) }
         if !projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             data["projectId"] = projectName
         }
         Task {
             do {
-                let taskId = try await manager.add(data, to: FSPath.Tasks(), notify: true, notifyType: .taskAssigned, notifyRecipients: usersArray)
+                let recipients = selectedEntities.filter { $0.value == "user" }.map { $0.key }
+                let taskId = try await manager.add(data, to: FSPath.Tasks(), notify: !recipients.isEmpty, notifyType: .taskAssigned, notifyRecipients: recipients)
                 print("Task saved with ID: \(taskId)")
             } catch {
                 print("Error saving task: \(error)")
@@ -147,7 +152,8 @@ struct AddTaskView: View {
         didPrefill = true
         title = t.title
         notes = t.description
-        usersArray = t.assigneeUIDs ?? []
+        selectedEntities = t.assigneeUIDs ?? [:]
+        usersArray = selectedEntities.filter { $0.value == "user" }.map { $0.key }
         if let due = t.dueAt?.dateValue() {
             hasDueDate = true
             dueDate = due
@@ -180,7 +186,7 @@ struct AddTaskView: View {
                 edited.priority = priorityValue
                 edited.status = existingTask?.status ?? "open"
                 edited.updatedAt = Timestamp(date: Date())
-                edited.assigneeUIDs = usersArray.isEmpty ? nil : usersArray
+                edited.assigneeUIDs = selectedEntities.isEmpty ? nil : selectedEntities
                 edited.projectId = trimmedProject.isEmpty ? nil : trimmedProject
                 edited.dueAt = hasDueDate ? Timestamp(date: dueDate) : nil
                 

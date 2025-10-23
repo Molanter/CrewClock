@@ -5,6 +5,7 @@ import FirebaseAuth
 class SearchUserViewModel: ObservableObject {
     @Published var searchText = ""
     @Published var foundUIDs: [String] = []
+    @Published var foundTeamIDs: [String] = []
     @Published var lastError: String?
 
     private let db = Firestore.firestore()
@@ -15,6 +16,48 @@ class SearchUserViewModel: ObservableObject {
         Task {
             let ids = await findUserIDs(query: query, excludeUIDs: exclude, totalLimit: 6)
             await MainActor.run { self.foundUIDs = ids }
+        }
+    }
+
+    /// Search teams the current user belongs to (member/admin/owner), filter by name prefix.
+    /// Uses collectionGroup("members") to find memberships, then loads team docs and filters by name.
+    @MainActor
+    func searchTeams(with query: String, excludeTeamIDs: Set<String> = []) async {
+        let raw = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty, let uid = Auth.auth().currentUser?.uid else {
+            self.foundTeamIDs = []
+            return
+        }
+        let q = raw.lowercased()
+        do {
+            // 1) Find team memberships via collection group
+            let memberSnaps = try await db.collectionGroup("members")
+                .whereField("uid", isEqualTo: uid)
+                .getDocuments()
+
+            let teamIds = Set(memberSnaps.documents.map { $0.reference.parent.parent?.documentID ?? "" }.filter { !$0.isEmpty })
+
+            if teamIds.isEmpty {
+                self.foundTeamIDs = []
+                return
+            }
+
+            // 2) Load teams and filter by nameLower (preferred) or name
+            var matched: [String] = []
+            for tid in teamIds {
+                guard !excludeTeamIDs.contains(tid) else { continue }
+                let tdoc = try await db.collection("teams").document(tid).getDocument()
+                guard let data = tdoc.data() else { continue }
+                let name = (data["name"] as? String) ?? ""
+                let nameLower = (data["nameLower"] as? String) ?? name.lowercased()
+                if nameLower.hasPrefix(q) {
+                    matched.append(tid)
+                }
+            }
+
+            self.foundTeamIDs = Array(matched.prefix(8))
+        } catch {
+            await MainActor.run { self.lastError = error.localizedDescription; self.foundTeamIDs = [] }
         }
     }
 
