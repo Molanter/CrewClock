@@ -49,7 +49,7 @@ class ConnectionsViewModel: ObservableObject {
                     id: doc.documentID,
                     uids: d["uids"] as? [String] ?? [],
                     initiator: d["initiator"] as? String ?? "",
-                    status: d["status"] as? String ?? "",
+                    status: ConnectionStatus(rawValue: d["status"] as? String ?? "") ?? .pending,
                     createdAt: d["createdAt"] as? Timestamp,
                     updatedAt: d["updatedAt"] as? Timestamp,
                     lastActionBy: d["lastActionBy"] as? String
@@ -121,7 +121,7 @@ class ConnectionsViewModel: ObservableObject {
                     id: doc.documentID,
                     uids: d["uids"] as? [String] ?? [],
                     initiator: d["initiator"] as? String ?? "",
-                    status: d["status"] as? String ?? "",
+                    status: ConnectionStatus(rawValue: d["status"] as? String ?? "") ?? .pending,
                     createdAt: d["createdAt"] as? Timestamp,
                     updatedAt: d["updatedAt"] as? Timestamp,
                     lastActionBy: d["lastActionBy"] as? String

@@ -17,9 +17,9 @@ struct UserConnectionsView: View {
         let me = userViewModel.user?.uid ?? Auth.auth().currentUser?.uid
         guard let me else { return [] }
 
-        return connectionsVM.connections.compactMap { conn in
+        return connectionsVM.connections.compactMap { conn -> (uid: String, status: String)? in
             guard let other = conn.uids.first(where: { $0 != me }) else { return nil }
-            let status = conn.status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let status = conn.status.rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             return (uid: other, status: status)
         }
     }

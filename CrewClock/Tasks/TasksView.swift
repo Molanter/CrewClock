@@ -33,10 +33,12 @@ struct TasksView: View {
                 }
 
                 List(filteredTasks) { task in
-                    NavigationLink {
-                        TaskDetailView(task: task, vm: vm)
-                    } label: {
-                        TaskRow(task: task)
+                    if let taskId = task.id{
+                        NavigationLink {
+                            TaskDetailView(taskId: taskId)
+                        } label: {
+                            TaskRow(task: task)
+                        }
                     }
                 }
                 .listStyle(.insetGrouped)

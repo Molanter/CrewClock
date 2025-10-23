@@ -105,7 +105,7 @@ struct SettingsTabView: View {
             UserConnectionsView()
                 .hideTabBarWhileActive("myLogs")
         } label: {
-            let count = connectionsVM.connections.filter { $0.status == "accepted" }.count
+            let count = connectionsVM.connections.filter { $0.status == .accepted }.count
             SettingRoundedButton(image: false, text1: "Connections", text2: count.description)
         }
         .buttonStyle(.plain)

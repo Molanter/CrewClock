@@ -128,4 +128,21 @@ struct K {
         static var privacyPolicy: URL = URL(string: "https://www.notion.so/Privacy-Policy-Crew-s-Clock-246e6ff13e478094a947c537ad6893db")!
         static var termsOfUse: URL = URL(string: "https://www.notion.so/Terms-of-Use-Crew-s-Clock-246e6ff13e47809d922af3828fff2af3")!
     }
+    
+    struct Logs {
+        static let dummyLog = LogFB(
+            data: [
+                "spreadsheetId": "",
+                "row": 0,
+                "projectName": "",
+                "comment": "",
+                "date": Date(),
+                "timeStarted": Date(),
+                "timeFinished": Date(),
+                "crewUID": [],
+                "expenses": 0.0
+            ],
+            documentId: "dummy"
+        )
+    }
 }

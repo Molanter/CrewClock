@@ -113,7 +113,7 @@ final class FirestoreManager {
     ) {
         guard let type = type, !recipients.isEmpty else { return }
         let currentUser = Auth.auth().currentUser
-        let name = userVM.user?.name ?? "Someone"
+        let name = userVM.user?.name ?? "Def_not_me"
         let fromUID = currentUser?.uid ?? ""
 
         let title = titleOverride ?? type.title

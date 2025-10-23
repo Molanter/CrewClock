@@ -8,7 +8,7 @@
 import SwiftUI
 
 enum NotificationType: String, Codable {
-    case connectInvite, teamInvite, connectionAccepted, projectInvite, taskAssigned, commentMention, scheduleUpdate, test
+    case connectInvite, teamInvite, connectionAccepted, projectInvite, taskAssigned, taskUpdated, commentMention, scheduleUpdate, test
     
     var message: String {
         switch self {
@@ -18,6 +18,8 @@ enum NotificationType: String, Codable {
             return "invited you to join to their project. Press Accept to accept or Reject."
         case .taskAssigned:
             return "gave you task. Press Accept the task or Reject."
+        case .taskUpdated:
+            return "updated task details."
         case .commentMention:
             return "mentioned you in the comment."
         case .scheduleUpdate:
@@ -49,6 +51,8 @@ enum NotificationType: String, Codable {
             return "Join my Team"
         case .taskAssigned:
             return "Task Assigned"
+        case .taskUpdated:
+            return "Task Updated"
         }
     }
     
@@ -58,6 +62,8 @@ enum NotificationType: String, Codable {
             return "Connect"
         case .projectInvite, .taskAssigned, .commentMention, .scheduleUpdate, .test, .teamInvite:
             return "Accept"
+        case .taskUpdated:
+            return "View"
         }
     }
 }

@@ -151,21 +151,8 @@ struct CalendarLogsView: View {
             Calendar.current.isDate(log.date, inSameDayAs: date)
         }
         if filteredLogs.isEmpty {
-            let dummyLog = LogFB(
-                data: [
-                    "spreadsheetId": "",
-                    "row": 0,
-                    "projectName": "",
-                    "comment": "",
-                    "date": Date(),
-                    "timeStarted": Date(),
-                    "timeFinished": Date(),
-                    "crewUID": [],
-                    "expenses": 0.0
-                ],
-                documentId: "dummy"
-            )
-            LogCalendarRow(log: dummyLog, isEmpty: true, selectedProject: .constant(dummyLog))
+            // K.Logs.dummyLog is dummy/emty log for now
+            LogCalendarRow(log: K.Logs.dummyLog, isEmpty: true, selectedProject: .constant(K.Logs.dummyLog))
         } else {
             ForEach(filteredLogs) { log in
                 LogCalendarRow(log: log, isEmpty: false, selectedProject: .constant(log))

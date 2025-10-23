@@ -24,6 +24,8 @@ struct CrewClockApp: App {
     @StateObject private var notificationsVM: NotificationsViewModel = .init()
     @StateObject private var connectionsVM: ConnectionsViewModel = .init()
     @StateObject private var publishedVariables: PublishedVariebles = .init()
+    @StateObject private var tasksVM: TaskViewModel = .init()
+
     
     
     
@@ -39,6 +41,7 @@ struct CrewClockApp: App {
                 .environmentObject(notificationsVM)
                 .environmentObject(connectionsVM)
                 .environmentObject(publishedVariables)
+                .environmentObject(tasksVM)
         }
     }
 }

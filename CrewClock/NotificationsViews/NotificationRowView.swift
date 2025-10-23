@@ -16,7 +16,10 @@ struct NotificationRowView: View {
 
     @StateObject private var invitesVM = TeamInvitesViewModel()
     @StateObject private var teamsVM = MyTeamsViewModel()
+    @StateObject private var taskVM = TaskViewModel()
 
+    @State private var taskToOpen: String?
+    
     let notification: NotificationFB
     var auth = Auth.auth()
     private let manager = FirestoreManager()
@@ -39,6 +42,9 @@ struct NotificationRowView: View {
                 }label: {
                     Image(systemName: "trash")
                 }
+            }
+            .navigationDestination(item: $taskToOpen) { taskId in
+                TaskDetailView(taskId: taskId)
             }
     }
     
@@ -185,6 +191,8 @@ struct NotificationRowView: View {
                 return
             case .teamInvite:
                 Task { await invitesVM.acceptInvite(teamId: notification.relatedId) }
+            case .taskUpdated:
+                self.taskToOpen = notification.relatedId
             }
         }
     }
@@ -219,6 +227,8 @@ struct NotificationRowView: View {
                 return
             case .teamInvite:
                 teamsVM.leaveTeam(teamId: notification.relatedId)
+            case .taskUpdated:
+                return
             }
         }
     }

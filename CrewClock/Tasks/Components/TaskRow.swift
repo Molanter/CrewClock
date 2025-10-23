@@ -9,22 +9,23 @@ import SwiftUI
 
 struct TaskRow: View {
     let task: TaskModel
-
+    
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title).font(.headline)
                 HStack(spacing: 8) {
                     if let due = task.dueAt?.dateValue() {
-                        Label(due.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Image(systemName: "calendar")
+                        Text(due.formatted(date: .abbreviated, time: .omitted))
                     }
 //                    if ((task.teamId) == nil) {
 //                        Text("Team").font(.caption2).padding(.horizontal, 6).padding(.vertical, 2)
 //                            .background(Capsule().fill(.thinMaterial))
 //                    }
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             Spacer()
             VStack {
@@ -36,7 +37,7 @@ struct TaskRow: View {
             }
         }
     }
-
+    
     private func statusPill(_ status: String) -> some View {
         Text(status.capitalized)
             .font(.caption2).bold()
@@ -46,7 +47,7 @@ struct TaskRow: View {
             )
             .foregroundStyle(statusColor(status))
     }
-
+    
     private func statusColor(_ s: String) -> Color {
         switch s.lowercased() {
         case "pending":  return .orange

@@ -74,9 +74,9 @@ struct LogCalendarRow: View {
             } else {
                 HStack(alignment: .center) {
                     if !isEmpty {
-                        RoundedRectangle(cornerRadius: 4)
+                        RoundedRectangle(cornerRadius: 2)
                             .fill(color)
-                            .frame(width: 8)
+                            .frame(width: 4)
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         headerText
@@ -190,7 +190,7 @@ struct LogCalendarRow: View {
         ],
         documentId: "log_001"
     )
-    LogCalendarRow(log: exampleLog, isEmpty: true, selectedProject: .constant(exampleLog))
+    LogCalendarRow(log: exampleLog, isEmpty: false, selectedProject: .constant(exampleLog))
         .environmentObject(ProjectViewModel())
         .environmentObject(LogsViewModel())
 }

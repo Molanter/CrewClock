@@ -22,17 +22,13 @@ struct SearchView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-//            if publishedVars.tabSelected == 0 || publishedVars.tabSelected == 1 {
-//                WorkingFooterView()
-//                    .padding(.horizontal, K.UI.padding*2)
-//            }
             switchView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background {
-            ListBackground()
-                .ignoresSafeArea()
-        }
+//        .background {
+//            ListBackground()
+//                .ignoresSafeArea()
+//        }
     }
     
     private var switchView: some View {
@@ -67,20 +63,14 @@ struct SearchView: View {
         HStack(alignment: .center) {
             UserRowView(uid: uid)
             Spacer()
-            if userViewModel.user?.connections.contains(uid) == true {
-                Text("Connected")
-                    .foregroundStyle(.secondary)
-            } else if sentInvites.contains(uid) {
-                Text("Sent")
-                    .foregroundStyle(.gray)
-            } else {
-                Button {
-                    self.connectWithPerson(uid)
-                } label: {
-                    Text("Connect")
-                        .foregroundStyle(K.Colors.accent)
-                }
-                .buttonStyle(.plain)
+            if let connection = connectionsVM.connections.first(where: { $0.uids.contains(uid) }) {
+                Text(connection.status.rawValue.capitalized)
+                    .foregroundStyle(statusCapsule(status: connection.status))
+                    .font(.caption)
+                    .padding(5)
+                    .background(
+                        Capsule().fill(statusCapsule(status: connection.status).opacity(0.5))
+                    )
             }
         }
     }
@@ -90,6 +80,13 @@ struct SearchView: View {
         self.notificationUID = uid
         connectionsVM.connectWithPerson(uid)
     }
+    
+    private func statusCapsule(status: ConnectionStatus) -> Color {
+        return status == .pending ? .gray :
+        status == .accepted ? .green :
+        status == .rejected ? .red :
+        .orange
+}
 }
 
 //#Preview {

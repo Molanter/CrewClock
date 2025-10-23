@@ -20,6 +20,7 @@ final class TaskViewModel: ObservableObject {
 
     private var listener: ListenerRegistration?
     private let db = Firestore.firestore()
+    private let manager = FirestoreManager()
 
     var me: String? { Auth.auth().currentUser?.uid }
     
@@ -66,7 +67,17 @@ final class TaskViewModel: ObservableObject {
                     }
                 }
             }
-            self.tasks = decoded
+            // Sort: incomplete tasks first, then by updatedAt descending
+            self.tasks = decoded.sorted {
+                let aDone = $0.status.lowercased() == "done"
+                let bDone = $1.status.lowercased() == "done"
+                if aDone != bDone {
+                    return !aDone && bDone // unfinished before done
+                }
+                let aDate = $0.updatedAt?.dateValue() ?? .distantPast
+                let bDate = $1.updatedAt?.dateValue() ?? .distantPast
+                return aDate > bDate // newer first
+            }
             self.errorMessage = firstError
         }
     }
@@ -86,18 +97,25 @@ final class TaskViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         // Preferred query: requires composite index (dueAt ASC, lastUpdatedAt DESC [+ filter field])
-        var base: Query = TaskModel.collection
+        let baseAll: Query = TaskModel.collection
             .order(by: "dueAt", descending: false)
             .order(by: "updatedAt", descending: true)
+        let baseFiltered: Query = TaskModel.collection
+            .order(by: "updatedAt", descending: true) // single sort avoids composite index with equality filters
         
         let query: Query
         switch filter {
         case .assignedToMe:
-            query = base.whereField("assigneeUIDs", arrayContains: me)
+            query = baseFiltered.whereField("assigneeUIDs", arrayContains: me)
         case .createdByMe:
-            query = base.whereField("creatorUID", isEqualTo: me)
+            query = baseFiltered.whereField("creatorUID", isEqualTo: me)
         case .all:
-            query = base
+            // All = (assigned to me) OR (created by me)
+            let orFilter = Filter.orFilter([
+                Filter.whereField("creatorUID", isEqualTo: me),
+                Filter.whereField("assigneeUIDs", arrayContains: me)
+            ])
+            query = baseFiltered.whereFilter(orFilter)
         }
         attachListener(with: query)
     }
@@ -115,7 +133,8 @@ final class TaskViewModel: ObservableObject {
         priority: Int = 0,
         dueAt: Timestamp? = nil,
         assignedTo: String? = nil,
-        teamId: String = ""
+        teamId: String = "",
+        projectId: String? = nil
     ) async throws {
         guard let me else { throw NSError(domain: "TaskVM", code: 1, userInfo: [NSLocalizedDescriptionKey: "Not signed in"]) }
 
@@ -127,12 +146,18 @@ final class TaskViewModel: ObservableObject {
             "priority": priority,
             "createdAt": now,
             "creatorUID": me,
-            "teamId": teamId,
             "updatedAt": now
         ]
         if let dueAt { data["dueAt"] = dueAt }
         if let assignedTo { data["assigneeUIDs"] = [assignedTo] }
+        if !teamId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            data["teamId"] = teamId
+        }
+        if let projectId, !projectId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            data["projectId"] = projectId
+        }
 
+        // Write the document
         let ref = TaskModel.collection.document()
         try await ref.setData(data)
     }
@@ -143,5 +168,62 @@ final class TaskViewModel: ObservableObject {
             "status": status,
             "updatedAt": Timestamp(date: Date())
         ], merge: true)
+    }
+
+    /// Update an existing task after editing.
+    /// Pass the full edited `TaskModel`. Fields set to `nil`/empty will be removed in Firestore.
+    @discardableResult
+    func updateTask(_ task: TaskModel) async throws -> Void {
+        // Ensure we have an ID to update
+        guard let taskId = task.id else {
+            throw NSError(domain: "TaskVM", code: 400, userInfo: [NSLocalizedDescriptionKey: "Task has no id."])
+        }
+
+        var data: [String: Any] = [
+            "title": task.title,
+            "description": task.description,
+            "status": task.status,
+            "priority": task.priority,
+            "updatedAt": Timestamp(date: Date())
+        ]
+
+        // dueAt: set or delete
+        if let dueAt = task.dueAt {
+            data["dueAt"] = dueAt
+        } else {
+            data["dueAt"] = FieldValue.delete()
+        }
+
+        // assigneeUIDs: set non-empty or delete
+        if let assignees = task.assigneeUIDs, !assignees.isEmpty {
+            data["assigneeUIDs"] = assignees
+        } else {
+            data["assigneeUIDs"] = FieldValue.delete()
+        }
+
+        // teamId: set non-empty or delete
+        if let teamId = task.teamId, !teamId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            data["teamId"] = teamId
+        } else {
+            data["teamId"] = FieldValue.delete()
+        }
+
+        // projectId: set non-empty or delete
+        if let projectId = task.projectId, !projectId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            data["projectId"] = projectId
+        } else {
+            data["projectId"] = FieldValue.delete()
+        }
+        let recipients = task.assigneeUIDs ?? []
+        try await manager.upsert(
+            data,
+            at: FSPath.Task(id: taskId),
+            merge: true,
+            notify: !recipients.isEmpty,
+            notifyType: .taskAssigned,
+            notifyRecipients: recipients,
+            notifyTitleOverride: "Task updated",
+            notifyMessageOverride: task.title
+        )
     }
 }
