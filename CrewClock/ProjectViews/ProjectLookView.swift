@@ -131,9 +131,16 @@ struct ProjectLookView: View {
         Section {
             ScrollView(.horizontal) {
                 HStack {
-                    ForEach(project?.crew ?? [], id: \.self) { uid in
-                        if let user = getUser(uid) {
-                            userProfileNameIcon(user)
+                    ForEach(Array(project?.crew ?? [:]), id: \.key) { entry in
+                        let id = entry.key
+                        let kind = entry.value.lowercased()
+                        if kind == "team" {
+//                            TeamRowView(teamId: id)
+                            //need to add some team view
+                        } else {
+                            if let user = getUser(id) {
+                                userProfileNameIcon(user)
+                            }
                         }
                     }
                 }
@@ -286,8 +293,10 @@ struct ProjectLookView: View {
                 self.project = fetchedProject
                 if let project = self.project {
                     userViewModel.fetchUser(by: project.owner)
-                    for uid in project.crew {
-                        userViewModel.fetchUser(by: uid)
+                    for (id, kind) in project.crew {
+                        if kind.lowercased() == "user" {
+                            userViewModel.fetchUser(by: id)
+                        }
                     }
                 }
             }
@@ -334,7 +343,7 @@ struct ProjectLookView: View {
         data: [
             "projectName": "Sample Project",
             "owner": "Edgars Yarmolatiy",
-            "crew": ["v51yL1dwlQWFCAGfMWPuvpVUUXl1"],
+            "crew": ["v51yL1dwlQWFCAGfMWPuvpVUUXl1": "user"],
             "checklist": [:],
             "comments": "Sample project comments",
             "color": "blue",
@@ -348,4 +357,3 @@ struct ProjectLookView: View {
         .environmentObject(UserViewModel())
         .environmentObject(ProjectViewModel())
 }
-

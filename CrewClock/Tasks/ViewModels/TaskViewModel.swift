@@ -214,7 +214,8 @@ final class TaskViewModel: ObservableObject {
         } else {
             data["projectId"] = FieldValue.delete()
         }
-        let recipients = task.assigneeUIDs ?? []
+        let recipientsDict = task.assigneeUIDs ?? [:]
+        let recipients = recipientsDict.filter { $0.value == "user" }.map { $0.key }
         try await manager.upsert(
             data,
             at: FSPath.Task(id: taskId),

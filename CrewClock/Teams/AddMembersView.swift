@@ -11,10 +11,11 @@ struct AddMembersView: View {
     let updateMembers: Bool = false
     let editing: Bool = false
     
-    @StateObject var vmMembers = AddMembersViewModel()
+    @StateObject var vmMembers = AddMembersToTeamViewModel()
     @StateObject private var vm = SearchUserViewModel()
     @State private var existingRoles: [String: TeamRole] = [:]
     @State private var selectedRoles: [String: TeamRole] = [:]
+    @State private var selectedEntities: [String: String] = [:] // id -> "user" | "team"
     
     @EnvironmentObject private var userViewModel: UserViewModel
     @FocusState private var isSearchFocused: Bool
@@ -33,6 +34,12 @@ struct AddMembersView: View {
                 }
             }
             .onAppear { onAppear() }
+            .onChange(of: selectedEntities) { newValue in
+                // mirror only user IDs into the dictionary this view expects
+                vmMembers.members = newValue.reduce(into: [:]) { acc, pair in
+                    if pair.value == "user" { acc[pair.key] = "user" }
+                }
+            }
     }
     
     private var list: some View {
@@ -56,9 +63,9 @@ struct AddMembersView: View {
     }
     
     private var searchSection: some View {
-        UserSearchAddField(
-            exclude: $vmMembers.members,
-            usersArray: $vmMembers.members,
+        CrewSearchAddField(
+            exclude: .constant(vmMembers.members),
+            selectedEntities: $selectedEntities,
             showAddedCrewList: false
         )
 
@@ -94,11 +101,12 @@ struct AddMembersView: View {
     
     private var forEachMember: some View {
         let myUid = userViewModel.user?.uid ?? Auth.auth().currentUser?.uid
+        let allUserIDs: [String] = vmMembers.members.filter { $0.value == "user" }.map { $0.key }
         let filtered: [String] = {
             if let myUid, !updateMembers {
-                return vmMembers.members.filter { $0 != myUid }
+                return allUserIDs.filter { $0 != myUid }
             } else {
-                return vmMembers.members
+                return allUserIDs
             }
         }()
         return Group {
@@ -160,14 +168,14 @@ struct AddMembersView: View {
             .submitLabel(.search)
             .onSubmit {
                 let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-                var exclude = Set(vmMembers.members)
+                var exclude = Set(vmMembers.members.keys)
                 if let me = Auth.auth().currentUser?.uid { exclude.insert(me) }
                 vm.searchUsers(with: q, alsoExclude: exclude)
             }
             .onChange(of: searchText) { oldVal, newVal in
                 let q = newVal.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !q.isEmpty, q.count >= 1 else { vm.foundUIDs = []; return }
-                var exclude = Set(vmMembers.members)
+                var exclude = Set(vmMembers.members.keys)
                 if let me = Auth.auth().currentUser?.uid { exclude.insert(me) }
                 vm.searchUsers(with: q, alsoExclude: exclude)
             }
@@ -193,8 +201,8 @@ struct AddMembersView: View {
                 UserRowView(uid: uid)
                 Spacer()
                 Button {
-                    if !vmMembers.members.contains(uid) {
-                        vmMembers.members.append(uid)
+                    if vmMembers.members[uid] == nil {
+                        vmMembers.members[uid] = "user"
                     }
                     if existingRoles[uid] == nil && selectedRoles[uid] == nil {
                         selectedRoles[uid] = .member
@@ -253,23 +261,27 @@ struct AddMembersView: View {
             isSearchFocused = true
             // Preload initial members if provided and the VM is empty
             if vmMembers.members.isEmpty && !initialMembers.isEmpty {
-                let combined = vmMembers.members + initialMembers
-                vmMembers.members = Array(Set(combined))
+                var preload: [String: String] = [:]
+                for uid in initialMembers { preload[uid] = "user" }
+                vmMembers.members = preload
             }
         }
         // Build role map from the members passed in
         let roleMap = Dictionary(uniqueKeysWithValues: existingMembers.map { ($0.uid, $0.role) })
         existingRoles = roleMap
 
-        // Merge any preloaded members + existing members UIDs, keep unique & preserve order
-        var seen = Set<String>()
-        let merged = vmMembers.members + initialMembers + existingMembers.map { $0.uid }
-        vmMembers.members = merged.filter { seen.insert($0).inserted }
+        // Merge any preloaded members + initialMembers + existingMembers (uids)
+        var mergedDict = vmMembers.members
+        for uid in initialMembers { mergedDict[uid] = "user" }
+        for entry in existingMembers { mergedDict[entry.uid] = "user" }
+        vmMembers.members = mergedDict
 
         // Ensure default role choice for new (non-existing) members
-        for uid in vmMembers.members where existingRoles[uid] == nil {
+        for uid in vmMembers.members.keys where existingRoles[uid] == nil {
             if selectedRoles[uid] == nil { selectedRoles[uid] = .member }
         }
+        // Prefill selectedEntities with the current dictionary
+        selectedEntities = vmMembers.members
     }
 }
 
@@ -285,6 +297,6 @@ struct AddMembersView: View {
             ]
         )
             .environmentObject(UserViewModel())
-            .environmentObject(AddMembersViewModel())
+            .environmentObject(AddMembersToTeamViewModel())
     }
 }

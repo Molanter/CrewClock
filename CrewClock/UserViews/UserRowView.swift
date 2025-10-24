@@ -26,6 +26,7 @@ struct UserRowView: View {
                             .font(.subheadline)
                             .foregroundColor(.gray)
                     }
+                    Spacer()
                 }
             } else {
                 ProgressView("Loading...")

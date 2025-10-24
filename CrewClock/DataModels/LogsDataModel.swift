@@ -28,11 +28,11 @@ struct LogModel {
     var date: Date
     var timeStarted: Date
     var timeFinished: Date
-    var crewUID: [String]
+    var crewUID: [String: String] // id -> "user" | "team"
     var expenses: Double
     var row: Int
 
-    init(logId: String = "", projectName: String = "", comment: String = "", date: Date = Date(), timeStarted: Date = Date(), timeFinished: Date = Date(), crewUID: [String] = [], expenses: Double = 0.0, row: Int = 0) {
+    init(logId: String = "", projectName: String = "", comment: String = "", date: Date = Date(), timeStarted: Date = Date(), timeFinished: Date = Date(), crewUID: [String: String] = [:], expenses: Double = 0.0, row: Int = 0) {
         self.logId = logId
         self.projectName = projectName
         self.comment = comment
@@ -55,7 +55,7 @@ struct LogFB: Identifiable, Codable {
     var date: Date
     var timeStarted: Date
     var timeFinished: Date
-    var crewUID: [String]
+    var crewUID: [String: String] // id -> "user" | "team"
     var expenses: Double
 
     init(data: [String: Any], documentId: String) {
@@ -67,7 +67,7 @@ struct LogFB: Identifiable, Codable {
         self.date = (data["date"] as? Timestamp)?.dateValue() ?? Date()
         self.timeStarted = (data["timeStarted"] as? Timestamp)?.dateValue() ?? Date()
         self.timeFinished = (data["timeFinished"] as? Timestamp)?.dateValue() ?? Date()
-        self.crewUID = data["crewUID"] as? [String] ?? []
+        self.crewUID = data["crewUID"] as? [String: String] ?? [:]
         self.expenses = data["expenses"] as? Double ?? 0.0
     }
 }

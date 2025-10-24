@@ -11,7 +11,7 @@ struct ManageTeamView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
 
     @StateObject private var teamsVM = MyTeamsViewModel()
-    @StateObject private var vmMembers = AddMembersViewModel()
+    @StateObject private var vmMembers = AddMembersToTeamViewModel()
 
     let team: TeamFB
     
