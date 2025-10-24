@@ -154,7 +154,7 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
         case .notifications:
             NotificationsView()
         case .faq:
-            Text("FAQ View")
+            FAQListView()
         case .support:
             Text("Contact Support View")
         case .reportBug:
