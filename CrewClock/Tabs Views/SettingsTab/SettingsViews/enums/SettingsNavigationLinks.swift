@@ -8,19 +8,6 @@
 
 import SwiftUI
 
-// MARK: - Hide tab bar while a destination is active (iOS 17+ compatible)
-struct HideTabBarWhileActive: ViewModifier {
-    @EnvironmentObject private var pub: PublishedVariebles
-    let key: String
-    func body(content: Content) -> some View {
-        content
-            .onAppear { pub.navLink = key }
-            .onDisappear {
-                // Only clear if we were the one that set it — avoids accidental clears when nested
-                if pub.navLink == key { pub.navLink = "" }
-            }
-    }
-}
 
 enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
     case createTeam, viewTeams, preferences, appearance, notifications, faq, support, reportBug, exportLogs, deleteAccount, about, privacyPolicy, termsOfUse, myLogs
@@ -156,9 +143,9 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
         case .faq:
             FAQListView()
         case .support:
-            Text("Contact Support View")
+            SupportView()
         case .reportBug:
-            Text("Report a Bug View")
+            ReportBugView()
         case .exportLogs:
             Text("Export Logs View")
         case .myLogs:

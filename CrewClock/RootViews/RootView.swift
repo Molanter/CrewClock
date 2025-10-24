@@ -15,6 +15,7 @@ struct RootView: View {
     @EnvironmentObject private var notificationsViewModel: NotificationsViewModel
     @EnvironmentObject private var connectionsVM: ConnectionsViewModel
 
+    @State private var deviceShaked: Bool = false
     
     var body: some View {
         Group {
@@ -27,6 +28,14 @@ struct RootView: View {
                         userViewModel.fetchUser()
                         connectionsVM.fetchAllConnections()
 
+                    }
+                    .onShake {
+                        print("Device shaken!")
+                        self.deviceShaked.toggle()
+                    }
+                    .sheet(isPresented: $deviceShaked) {
+                        ReportBugView()
+                            .presentationDetents([.medium, .large])
                     }
             } else {
                 SignInView()

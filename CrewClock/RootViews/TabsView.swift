@@ -37,15 +37,16 @@ struct TabsView: View {
             modernTabsViews
             if publishedVars.navLink.isEmpty {
                 VStack(spacing: -10) {
-                    if activeTab == .logs || activeTab == .settings, !showSearchBar {
-                        WorkingFooterView()
-                            .padding(.horizontal, K.UI.padding*2)
+                    if publishedVars.navLink.isEmpty {
+                        if activeTab == .logs || activeTab == .settings, !showSearchBar {
+                            WorkingFooterView()
+                                .padding(.horizontal, K.UI.padding*2)
+                        }
+                        CustomTabBar(showsSearchBar: true, activeTab: $activeTab, searchText: $publishedVars.searchClock) { status in
+                            self.showSearchBar.toggle()
+                        } onSearchTextFieldActive: { status in }
+                        .padding(.bottom, 10)
                     }
-                    CustomTabBar(showsSearchBar: true, activeTab: $activeTab, searchText: $publishedVars.searchClock) { status in
-                        self.showSearchBar.toggle()
-                    } onSearchTextFieldActive: { status in
-                    }
-                    .padding(.bottom, 10)
                 }
             }
         }
