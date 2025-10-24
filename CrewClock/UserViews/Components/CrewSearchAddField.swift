@@ -1,5 +1,5 @@
 //
-//  UserSearchAddField.swift
+//  CrewSearchAddField.swift
 //  CrewClock
 //
 //  Created by Edgars Yarmolatiy on 10/8/25.
@@ -8,7 +8,7 @@
 import SwiftUI
 import FirebaseAuth
 
-struct UserSearchAddField: View {
+struct CrewSearchAddField: View {
     @EnvironmentObject private var userViewModel: UserViewModel
     @EnvironmentObject private var searchUserViewModel: SearchUserViewModel
 
@@ -21,7 +21,8 @@ struct UserSearchAddField: View {
     
     var body: some View {
         let userIDs = selectedEntities.filter { $0.value == "user" }.map { $0.key }
-        crewSection(userIDs: userIDs)
+        let teamIDs = selectedEntities.filter { $0.value == "team" }.map { $0.key }
+        crewSection(userIDs: userIDs, teamIDs: teamIDs)
         // Debounced search driven from view-level task
         .task(id: crewSearch) {
             let q = crewSearch.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -39,13 +40,14 @@ struct UserSearchAddField: View {
         }
     }
     
-    private func crewSection(userIDs: [String]) -> some View {
+    private func crewSection(userIDs: [String], teamIDs: [String]) -> some View {
         Section(header: Text("Crew")) {
             if !userIDs.isEmpty && showAddedCrewList { crewList(for: userIDs) }
+            if !teamIDs.isEmpty && showAddedCrewList { teamList(for: teamIDs) }
 
             TextField("Search to add crew", text: $crewSearch)
                 .textInputAutocapitalization(.never)
-                .disableAutocorrection(true)
+                .autocorrectionDisabled()
                 .submitLabel(.search)
 
             if !crewSearch.isEmpty {
@@ -62,12 +64,11 @@ struct UserSearchAddField: View {
         let me = userViewModel.user?.uid
         let excludeSet = Set(exclude.keys)
         let results = searchUserViewModel.foundUIDs.filter { $0 != me && !excludeSet.contains($0) }
-
-        return VStack(alignment: .leading) {
+        return Group {
             if results.isEmpty {
                 Text("No users found.").foregroundColor(.secondary)
             } else {
-                ForEach(results, id: \.self) { uid in
+                ForEach(Array(results.enumerated()), id: \.element) { index, uid in
                     HStack {
                         UserRowView(uid: uid)
                         Spacer()
@@ -89,11 +90,11 @@ struct UserSearchAddField: View {
         let results = searchUserViewModel.foundTeamIDs
             .filter { !selectedEntities.keys.contains($0) } // avoid duplicates
 
-        return VStack(alignment: .leading, spacing: 8) {
+        return Group {
             if results.isEmpty {
-                EmptyView()
+                Text("No team found.").foregroundColor(.secondary)
             } else {
-                ForEach(results, id: \.self) { teamId in
+                ForEach(Array(results.enumerated()), id: \.element) { index, teamId in
                     HStack {
                         TeamRowView(teamId: teamId)
                         Spacer()
@@ -124,6 +125,23 @@ struct UserSearchAddField: View {
         }
     }
 
+    private func teamList(for teamIDs: [String]) -> some View {
+        ForEach(teamIDs, id: \.self) { teamId in
+            HStack {
+                Button(action: { removeTeamFromCrew(teamId) }) {
+                    Image(systemName: "minus.circle.fill")
+                        .symbolRenderingMode(.multicolor)
+                        .foregroundColor(.red)
+                }
+                TeamRowView(teamId: teamId)
+            }
+        }
+    }
+
+    private func removeTeamFromCrew(_ teamId: String) {
+        selectedEntities.removeValue(forKey: teamId)
+    }
+
     // Crew ops
     private func removeUserFromCrew(_ uid: String) {
         selectedEntities.removeValue(forKey: uid)
@@ -132,7 +150,7 @@ struct UserSearchAddField: View {
 
 
 #Preview {
-    UserSearchAddField(
+    CrewSearchAddField(
         exclude: .constant([:]),
         selectedEntities: .constant([:]),
         showAddedCrewList: true
@@ -140,3 +158,4 @@ struct UserSearchAddField: View {
     .environmentObject(UserViewModel())
     .environmentObject(SearchUserViewModel())
 }
+

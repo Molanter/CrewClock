@@ -33,8 +33,8 @@ struct AddTaskView: View {
             GlassList {
                 detailsSection
                 
-                UserSearchAddField(
-                    exclude: $selectedEntities,
+                CrewSearchAddField(
+                    exclude: .constant(selectedEntities),
                     selectedEntities: $selectedEntities,
                     showAddedCrewList: true
                 )

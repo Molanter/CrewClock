@@ -63,7 +63,7 @@ struct AddMembersView: View {
     }
     
     private var searchSection: some View {
-        UserSearchAddField(
+        CrewSearchAddField(
             exclude: .constant(vmMembers.members),
             selectedEntities: $selectedEntities,
             showAddedCrewList: false

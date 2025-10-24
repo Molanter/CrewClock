@@ -24,40 +24,88 @@ class SearchUserViewModel: ObservableObject {
     @MainActor
     func searchTeams(with query: String, excludeTeamIDs: Set<String> = []) async {
         let raw = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty, let uid = Auth.auth().currentUser?.uid else {
-            self.foundTeamIDs = []
+        guard !raw.isEmpty else {
+            await MainActor.run { self.foundTeamIDs = [] }
             return
         }
-        let q = raw.lowercased()
+        guard let currentUser = Auth.auth().currentUser else {
+            await MainActor.run { self.foundTeamIDs = [] }
+            return
+        }
+        let uid = currentUser.uid
+        let emailLower = currentUser.email?.lowercased()
+        let needle = raw.lowercased()
+
         do {
-            // 1) Find team memberships via collection group
-            let memberSnaps = try await db.collectionGroup("members")
-                .whereField("uid", isEqualTo: uid)
-                .getDocuments()
+            // Run membership and ownership lookups concurrently
+            async let byUidTask: [String] = {
+                do {
+                    let snaps = try await db.collectionGroup("members")
+                        .whereField("uid", isEqualTo: uid)
+                        .getDocuments()
+                    return snaps.documents.compactMap { $0.reference.parent.parent?.documentID }
+                } catch {
+                    return []
+                }
+            }()
 
-            let teamIds = Set(memberSnaps.documents.map { $0.reference.parent.parent?.documentID ?? "" }.filter { !$0.isEmpty })
+            async let byEmailTask: [String] = {
+                guard let emailLower else { return [] }
+                do {
+                    let snaps = try await db.collectionGroup("members")
+                        .whereField("emailLower", isEqualTo: emailLower)
+                        .getDocuments()
+                    return snaps.documents.compactMap { $0.reference.parent.parent?.documentID }
+                } catch {
+                    return []
+                }
+            }()
 
-            if teamIds.isEmpty {
-                self.foundTeamIDs = []
+            async let ownedTask: [String] = {
+                do {
+                    let snaps = try await db.collection("teams")
+                        .whereField("ownerUid", isEqualTo: uid)
+                        .getDocuments()
+                    return snaps.documents.map { $0.documentID }
+                } catch {
+                    return []
+                }
+            }()
+
+            var teamIds = Set(try await byUidTask + byEmailTask + ownedTask)
+            teamIds.subtract(excludeTeamIDs)
+
+            guard !teamIds.isEmpty else {
+                await MainActor.run { self.foundTeamIDs = [] }
                 return
             }
 
-            // 2) Load teams and filter by nameLower (preferred) or name
-            var matched: [String] = []
-            for tid in teamIds {
-                guard !excludeTeamIDs.contains(tid) else { continue }
-                let tdoc = try await db.collection("teams").document(tid).getDocument()
-                guard let data = tdoc.data() else { continue }
-                let name = (data["name"] as? String) ?? ""
-                let nameLower = (data["nameLower"] as? String) ?? name.lowercased()
-                if nameLower.hasPrefix(q) {
-                    matched.append(tid)
+            // Load team docs in parallel and filter by name
+            let matched: [String] = try await withThrowingTaskGroup(of: String?.self) { group in
+                for tid in teamIds {
+                    group.addTask { [db] in
+                        let tdoc = try await db.collection("teams").document(tid).getDocument()
+                        guard let data = tdoc.data() else { return nil }
+                        let name = (data["name"] as? String) ?? ""
+                        let nameLower = (data["nameLower"] as? String) ?? name.lowercased()
+                        return nameLower.contains(needle) ? tid : nil
+                    }
                 }
+                var results: [String] = []
+                for try await tid in group {
+                    if let tid { results.append(tid) }
+                }
+                return results
             }
 
-            self.foundTeamIDs = Array(matched.prefix(8))
+            await MainActor.run {
+                self.foundTeamIDs = Array(matched.prefix(8))
+            }
         } catch {
-            await MainActor.run { self.lastError = error.localizedDescription; self.foundTeamIDs = [] }
+            await MainActor.run {
+                self.lastError = error.localizedDescription
+                self.foundTeamIDs = []
+            }
         }
     }
 

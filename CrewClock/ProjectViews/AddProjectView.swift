@@ -133,7 +133,7 @@ struct AddProjectView: View {
     }
 
     private var crewSection: some View {
-        UserSearchAddField(
+        CrewSearchAddField(
             exclude: .constant(project.crew),
             selectedEntities: $selectedEntities,
             showAddedCrewList: true
