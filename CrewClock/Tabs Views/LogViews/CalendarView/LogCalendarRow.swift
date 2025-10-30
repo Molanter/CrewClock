@@ -42,6 +42,12 @@ struct LogCalendarRow: View {
             }
             .contextMenu {
                 if !isEmpty {
+                    NavigationLink {
+                        LogDetailView(logId: self.log.id)
+                    } label: {
+                        Label("Info", systemImage: "info.circle.text.page")
+                    }
+
                     Button {
                         self.editingLog = self.log
                     }label: {

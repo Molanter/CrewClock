@@ -38,7 +38,7 @@ struct SignInButtonView: View {
 //                    TransparentBlurView(removeAllFilters: false)
 //                        .blur(radius: 9, opaque: true)
 //                        .background(.white.opacity(0.05))
-                    GlassBlur(removeAllFilters: false)
+                    GlassBlur(removeAllFilters: true)
                         .cornerRadius(K.UI.cornerRadius)
                 }
             }

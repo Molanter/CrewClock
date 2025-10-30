@@ -10,11 +10,11 @@ import SwiftUI
 struct GlassBlur: View {
     @Environment(\.colorScheme) var colorScheme
     var removeAllFilters: Bool = false
-    var blur = 0.05
+    var blur = 5
     var body: some View {
         TransparentBlurView(removeAllFilters: removeAllFilters)
-            .blur(radius: 9, opaque: true)
-            .background(colorScheme == .dark ? Color.white.opacity(blur) : Color.black.opacity(0.1))
+            .blur(radius: CGFloat(blur), opaque: true)
+            .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
     }
 }
 

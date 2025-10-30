@@ -10,17 +10,6 @@
 import Foundation
 import FirebaseFirestore
 
-//struct Log: Identifiable, Codable {
-//    @DocumentID var id: String?
-//    var projectName: String
-//    var comment: String
-//    var date: Date
-//    var timeStarted: String
-//    var timeFinished: String
-//    var crewUID: [String]
-//    var expenses: Double
-//}
-
 struct LogModel {
     var logId: String
     var projectName: String

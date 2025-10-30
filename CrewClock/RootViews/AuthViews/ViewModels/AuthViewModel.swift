@@ -37,7 +37,7 @@ class AuthViewModel: NSObject, ObservableObject {
         } else {
             self.isSignedIn = false
         }
-
+        
         GIDSignIn.sharedInstance.restorePreviousSignIn { [weak self] user, error in
             guard let self = self else { return }
             guard let user = user, error == nil else {
@@ -45,7 +45,7 @@ class AuthViewModel: NSObject, ObservableObject {
                 self.userToken = nil
                 return
             }
-
+            
             // IMPORTANT: refresh before reading the token
             user.refreshTokensIfNeeded { auth, err in
                 if let err = err {
@@ -53,7 +53,7 @@ class AuthViewModel: NSObject, ObservableObject {
                     self.userToken = nil
                     return
                 }
-
+                
                 let token = user.accessToken.tokenString
                 self.userToken = token
                 print("🟢 Restored Google access token: \(token ?? "nil")")
@@ -251,45 +251,45 @@ class AuthViewModel: NSObject, ObservableObject {
         }
     }
 }
-    
-    
-    extension AuthViewModel: ASAuthorizationControllerDelegate {
-        func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-            if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
-                guard let nonce = currentNonce,
-                      let appleIDToken = appleIDCredential.identityToken,
-                      let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-                    print("Error getting Apple token")
-                    return
-                }
-                
-                let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idTokenString, rawNonce: nonce)
-                
-                Auth.auth().signIn(with: credential) { result, error in
-                    if let error = error {
-                        print("Firebase Apple sign-in error: \(error.localizedDescription)")
-                    } else {
-                        print("Signed in with Apple")
-                        self.checkIfSignedIn()
-                        if let user = result?.user {
-                            self.setProfile(user: user)
-                            print("set profile called")
-                        }
-                        self.isSignedIn = true
-                        // You can publish user data here if needed
+
+
+extension AuthViewModel: ASAuthorizationControllerDelegate {
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
+            guard let nonce = currentNonce,
+                  let appleIDToken = appleIDCredential.identityToken,
+                  let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+                print("Error getting Apple token")
+                return
+            }
+            
+            let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idTokenString, rawNonce: nonce)
+            
+            Auth.auth().signIn(with: credential) { result, error in
+                if let error = error {
+                    print("Firebase Apple sign-in error: \(error.localizedDescription)")
+                } else {
+                    print("Signed in with Apple")
+                    self.checkIfSignedIn()
+                    if let user = result?.user {
+                        self.setProfile(user: user)
+                        print("set profile called")
                     }
+                    self.isSignedIn = true
+                    // You can publish user data here if needed
                 }
             }
         }
-        
-        func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-            print("Apple Sign-In failed: \(error.localizedDescription)")
-            self.checkIfSignedIn()
-        }
     }
     
-    extension AuthViewModel: ASAuthorizationControllerPresentationContextProviding {
-        func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-            return UIApplication.shared.windows.first { $0.isKeyWindow }!
-        }
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        print("Apple Sign-In failed: \(error.localizedDescription)")
+        self.checkIfSignedIn()
     }
+}
+
+extension AuthViewModel: ASAuthorizationControllerPresentationContextProviding {
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        return UIApplication.shared.windows.first { $0.isKeyWindow }!
+    }
+}
