@@ -6,46 +6,77 @@
 //
 
 import SwiftUI
+import FirebaseAuth
+
+
+private enum SessionPhase { case signedIn, tearingDown, signedOut }
 
 struct RootView: View {
-    @EnvironmentObject var authViewModel: AuthViewModel
-    @EnvironmentObject var logViewModel: LogsViewModel
-    @EnvironmentObject var projectViewModel: ProjectViewModel
-    @EnvironmentObject var userViewModel: UserViewModel
-    @EnvironmentObject private var notificationsViewModel: NotificationsViewModel
-    @EnvironmentObject private var connectionsVM: ConnectionsViewModel
-
-    @State private var deviceShaked: Bool = false
+    @EnvironmentObject var authVM: AuthViewModel
+    @EnvironmentObject var logsVM: LogsViewModel
+    @EnvironmentObject var projectsVM: ProjectViewModel
+    @EnvironmentObject var userVM: UserViewModel
+    @EnvironmentObject var notificationsVM: NotificationsViewModel
+    @EnvironmentObject var connectionsVM: ConnectionsViewModel
     
+    @State private var deviceShaked = false
+    @State private var phase: SessionPhase = (Auth.auth().currentUser != nil) ? .signedIn : .signedOut
     var body: some View {
         Group {
-            if authViewModel.isSignedIn {
+            switch phase {
+            case .signedIn:
                 TabsView()
+            case .tearingDown:
+                // Blank screen for one runloop while VMs quiesce
+                Color.clear
+                    .ignoresSafeArea()
                     .onAppear {
-                        logViewModel.fetchLogs()
-                        projectViewModel.fetchProjects()
-                        notificationsViewModel.fetchNotifications(completion: { array in notificationsViewModel.notifications = array })
-                        userViewModel.fetchUser()
-                        connectionsVM.fetchAllConnections()
-
+                        // one more tick, then flip to signedOut
+                        DispatchQueue.main.async {
+                            phase = .signedOut
+                        }
                     }
-                    .onShake {
-                        print("Device shaken!")
-                        self.deviceShaked.toggle()
-                    }
-                    .sheet(isPresented: $deviceShaked) {
-                        ReportBugView()
-                            .presentationDetents([.medium, .large])
-                    }
-            } else {
+            case .signedOut:
                 SignInView()
             }
         }
-        .id(authViewModel.isSignedIn) /// <- forces a clean rebuild on sign-in/out
+        // Run once per sign-in state change. Sync fetches only.
+        .task {
+            if  phase == .signedIn {
+                logsVM.fetchLogs()
+                projectsVM.fetchProjects()
+                notificationsVM.fetchNotifications { array in
+                    notificationsVM.notifications = array
+                }
+                userVM.fetchUser()
+                connectionsVM.fetchAllConnections()
+            }
+        }
+        // Drive phase by notifications, not by @Published flips
+        .onReceive(NotificationCenter.default.publisher(for: .authDidSignIn)) { _ in
+            withTransaction(Transaction(animation: nil)) { phase = .signedIn }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .sessionWillEnd)) { _ in
+            withTransaction(Transaction(animation: nil)) { phase = .tearingDown }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .authDidSignOut)) { _ in
+            // no-op; we already moved to .signedOut after teardown
+        }
+        // Disable animations during auth transitions to avoid graph cycles
+        .transaction { $0.disablesAnimations = true }
+        .onShake { deviceShaked.toggle() }
+        .sheet(isPresented: $deviceShaked) {
+            ReportBugView().presentationDetents([.medium, .large])
+        }
     }
 }
 
-
 #Preview {
     RootView()
+        .environmentObject(AuthViewModel())
+        .environmentObject(LogsViewModel())
+        .environmentObject(ProjectViewModel())
+        .environmentObject(UserViewModel())
+        .environmentObject(NotificationsViewModel())
+        .environmentObject(ConnectionsViewModel())
 }

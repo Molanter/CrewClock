@@ -13,188 +13,175 @@ import FirebaseMessaging
 import AuthenticationServices
 import CryptoKit
 
-class AuthViewModel: NSObject, ObservableObject {
-    @Published var isSignedIn = false
+@MainActor
+final class AuthViewModel: NSObject, ObservableObject {
     @Published var userName: String?
     @Published var userEmail: String?
     @Published var userToken: String?
-    
+
     private var currentNonce: String?
-    
-    var auth = Auth.auth()
-    
+
+    private let auth = Auth.auth()
+
     override init() {
         super.init()
+        // Manual bootstrap without auth listeners
         checkIfSignedIn()
+        restoreGoogleIfPossible()
     }
+
     
+    @MainActor
     func checkIfSignedIn() {
-        if let user = Auth.auth().currentUser {
-            self.isSignedIn = true
-            self.userName = user.displayName
-            self.userEmail = user.email
-            print("✅ Restored Firebase session: \(user.email ?? "")")
+        if let user = auth.currentUser {
+            userName = user.displayName
+            userEmail = user.email
+            print("✅ Firebase session active: \(user.email ?? "")")
+            NotificationCenter.default.post(name: .authDidSignIn, object: nil)
         } else {
-            self.isSignedIn = false
+            userName = nil
+            userEmail = nil
+            print("ℹ️ No active Firebase session")
         }
-        
+    }
+
+    // MARK: - Session bootstrap
+
+    func restoreGoogleIfPossible() {
         GIDSignIn.sharedInstance.restorePreviousSignIn { [weak self] user, error in
-            guard let self = self else { return }
-            guard let user = user, error == nil else {
-                print("⚠️ Google user not restored: \(error?.localizedDescription ?? "unknown error")")
+            guard let self else { return }
+            if let error = error {
+                print("⚠️ Google user not restored: \(error.localizedDescription)")
                 self.userToken = nil
                 return
             }
-            
-            // IMPORTANT: refresh before reading the token
-            user.refreshTokensIfNeeded { auth, err in
+            guard let gUser = user else {
+                print("ℹ️ No previous Google session")
+                self.userToken = nil
+                return
+            }
+            gUser.refreshTokensIfNeeded { _, err in
                 if let err = err {
                     print("⚠️ Failed to refresh Google tokens: \(err.localizedDescription)")
                     self.userToken = nil
                     return
                 }
-                
-                let token = user.accessToken.tokenString
+                let token = gUser.accessToken.tokenString
                 self.userToken = token
-                print("🟢 Restored Google access token: \(token ?? "nil")")
+                print("🟢 Restored Google access token: \(token)")
             }
         }
     }
-    //MARK: Sign Ins
-    ///SignIn with Google
+
+    // MARK: - Sign-ins
+
     func signInWithGoogle() {
-        guard let rootVC = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap({ $0.windows })
-            .first(where: { $0.isKeyWindow })?.rootViewController else {
+        guard
+            let rootVC = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .flatMap({ $0.windows })
+                .first(where: { $0.isKeyWindow })?
+                .rootViewController
+        else {
             print("❌ No root view controller")
             return
         }
-        
-        GIDSignIn.sharedInstance.signIn(
-            withPresenting: rootVC,
-            hint: nil,
-        ) { [weak self] result, error in
+
+        GIDSignIn.sharedInstance.signIn(withPresenting: rootVC, hint: nil) { [weak self] result, error in
+            guard let self else { return }
             if let error = error {
                 print("❌ Google Sign-In failed: \(error.localizedDescription)")
                 return
             }
-            
-            guard let user = result?.user,
-                  let idToken = user.idToken?.tokenString else {
+            guard
+                let gUser = result?.user,
+                let idToken = gUser.idToken?.tokenString
+            else {
                 print("❌ Missing Google tokens")
                 return
             }
-            
-            let accessToken = user.accessToken.tokenString
+
+            let accessToken = gUser.accessToken.tokenString
             let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessToken)
-            
+
             Auth.auth().signIn(with: credential) { authResult, error in
                 if let error = error {
                     print("❌ Firebase sign-in error: \(error.localizedDescription)")
                     return
                 }
-                
-                DispatchQueue.main.async {
-                    self?.isSignedIn = true
-                    if let user = authResult?.user {
-                        self?.setProfile(user: user)
-                    }
-                    print("✅ Signed in as \(user.profile?.email ?? "-")")
-                    print("🟢 Access token for Google APIs: \(accessToken)")
-                    self?.checkIfSignedIn()
+
+                if let user = authResult?.user {
+                    self.setProfile(user: user)
+                }
+                if let u = authResult?.user {
+                    NotificationCenter.default.post(name: .authDidSignIn, object: nil)
                     
-                    Messaging.messaging().token { token, error in
-                        if let error = error {
-                            print("Error fetching FCM registration token: \(error)")
-                        } else if let token = token {
-                            print("FCM registration token: \(token)")
-                            // You can now store or update the token in Firestore
-                            NotificationsViewModel().updateFcmToken(token: token)
-                            app.fcmToken = token  // store in @AppStorage
-                        }
+                    self.userName = u.displayName
+                    self.userEmail = u.email
+                }
+                print("✅ Signed in as \(gUser.profile?.email ?? "-")")
+                print("🟢 Access token for Google APIs: \(accessToken)")
+
+                // Fetch and store FCM token after Firebase sign-in.
+                Messaging.messaging().token { token, error in
+                    if let error = error {
+                        print("⚠️ FCM token fetch error: \(error.localizedDescription)")
+                    } else if let token = token {
+                        print("📨 FCM token: \(token)")
+                        NotificationsViewModel().updateFcmToken(token: token)
+                        app.fcmToken = token
                     }
                 }
             }
         }
     }
-    
-    ///SignIn with Emai+Password
+
     func signInWithEmail(email: String, password: String, completion: @escaping (Result<User, Error>) -> Void) {
-        Auth.auth().signIn(withEmail: email, password: password) { result, error in
+        Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
             if let user = result?.user {
                 completion(.success(user))
-                self.checkIfSignedIn()
-                self.setProfile(user: user)
+                self?.setProfile(user: user)
+                NotificationCenter.default.post(name: .authDidSignIn, object: nil)
+                self?.userName = user.displayName
+                self?.userEmail = user.email
             } else if let error = error {
                 completion(.failure(error))
             }
         }
     }
-    
-    ///SignIn with Apple
+
     func handleAppleSignIn() {
         let nonce = randomNonceString()
         currentNonce = nonce
-        
+
         let request = ASAuthorizationAppleIDProvider().createRequest()
         request.requestedScopes = [.fullName, .email]
         request.nonce = sha256(nonce)
-        
+
         let controller = ASAuthorizationController(authorizationRequests: [request])
         controller.delegate = self
         controller.presentationContextProvider = self
         controller.performRequests()
     }
-    
-    private func sha256(_ input: String) -> String {
-        let inputData = Data(input.utf8)
-        let hashed = SHA256.hash(data: inputData)
-        return hashed.compactMap { String(format: "%02x", $0) }.joined()
-    }
-    
-    private func randomNonceString(length: Int = 32) -> String {
-        let charset: Array<Character> = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
-        var result = ""
-        var remainingLength = length
-        
-        while remainingLength > 0 {
-            let random = UInt8.random(in: 0...255)
-            if random < charset.count {
-                result.append(charset[Int(random)])
-                remainingLength -= 1
-            }
-        }
-        
-        return result
-    }
-    
-    
-    //MARK: Set profile data
+
+    // MARK: - Profile
+
     func setProfile(user: FirebaseAuth.User,
                     overrideName: String? = nil,
                     overridePhotoURL: URL? = nil) {
-        
-        // Prefer explicit overrides → Firebase top-level → provider data (google.com)
         let googleProfile = user.providerData.first { $0.providerID == "google.com" }
-        
-        let bestName =
-        overrideName ??
-        user.displayName ??
-        googleProfile?.displayName ??
-        "Someone"
-        
-        // Google photos often live here:
+
+        let bestName = overrideName ?? user.displayName ?? googleProfile?.displayName ?? "Someone"
+
         var photo = overridePhotoURL?.absoluteString
         ?? user.photoURL?.absoluteString
         ?? googleProfile?.photoURL?.absoluteString
         ?? ""
-        
-        // (Optional) request a larger size if it’s a Google photo
-        if photo.contains("googleusercontent.com") && !photo.contains("=s") {
-            photo += "?sz=256"   // or "&sz=256" depending on the url
+
+        if photo.contains("googleusercontent.com"), !photo.contains("=s"), !photo.contains("?sz=") {
+            photo += (photo.contains("?") ? "&" : "?") + "sz=256"
         }
-        
+
         let userData: [String: Any] = [
             "uid": user.uid,
             "email": user.email ?? "",
@@ -202,94 +189,131 @@ class AuthViewModel: NSObject, ObservableObject {
             "profileImage": photo,
             "updatedAt": FieldValue.serverTimestamp()
         ]
-        
+
         Firestore.firestore()
             .collection("users")
             .document(user.uid)
             .setData(userData, merge: true) { error in
                 if let error = error {
-                    print("setProfile Firestore error: \(error.localizedDescription)")
+                    print("⚠️ setProfile Firestore error: \(error.localizedDescription)")
                 } else {
-                    print("setProfile saved for \(bestName) - \(user.email ?? "") | photo: \(photo.isEmpty ? "none" : photo)")
+                    print("💾 setProfile saved for \(bestName) - \(user.email ?? "") | photo: \(photo.isEmpty ? "none" : photo)")
                 }
             }
     }
-    
-    //MARK: Sign Out :(
+
+    // MARK: - Sign out
+
     func signOut() {
-        // Capture before sign-out
-        let uid = auth.currentUser?.uid
-        let token  = app.fcmToken
+        // Stop user-scoped listeners first if you have them.
+//        app.stopAllUserScopedListeners?()
+
+        // Best-effort FCM cleanup before auth is cleared.
         
-        // Try to remove token mapping first (fire-and-forget is fine)
-        if let uid, let token {
-            let notificationsVM = NotificationsViewModel()
-            notificationsVM.deleteFcmToken(userId: uid, token: token)
+        if let uid = auth.currentUser?.uid, let token = app.fcmToken {
+            NotificationsViewModel().deleteFcmToken(userId: uid, token: token)
         }
-        
+
         do {
+            // tell views/VMs to quiesce first
+            NotificationCenter.default.post(name: .sessionWillEnd, object: nil)
+
             try Auth.auth().signOut()
             GIDSignIn.sharedInstance.signOut()
-            
-            // (Optional) also invalidate the device’s FCM token:
-            // Messaging.messaging().deleteToken { error in
-            //     if let error = error { print("deleteToken error:", error) }
-            // }
-            
-            DispatchQueue.main.async {
-                self.isSignedIn = false
-                self.userName = nil
-                self.userEmail = nil
-                app.fcmToken = nil
-            }
-            
+
+            app.fcmToken = nil
+            self.userName = nil
+            self.userEmail = nil
+
+            // now tell UI to switch branches
+            NotificationCenter.default.post(name: .authDidSignOut, object: nil)
+
             print("✅ Successfully signed out.")
-            self.checkIfSignedIn()
         } catch {
             print("❌ Error signing out: \(error.localizedDescription)")
-            self.checkIfSignedIn()
         }
     }
 }
 
+// MARK: - Apple Sign-In delegates
 
 extension AuthViewModel: ASAuthorizationControllerDelegate {
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-        if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
-            guard let nonce = currentNonce,
-                  let appleIDToken = appleIDCredential.identityToken,
-                  let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-                print("Error getting Apple token")
+        guard
+            let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
+            let nonce = currentNonce,
+            let appleIDToken = appleIDCredential.identityToken,
+            let idTokenString = String(data: appleIDToken, encoding: .utf8)
+        else {
+            print("❌ Error getting Apple token")
+            return
+        }
+
+        let credential = OAuthProvider.credential(withProviderID: "apple.com",
+                                                  idToken: idTokenString,
+                                                  rawNonce: nonce)
+
+        Auth.auth().signIn(with: credential) { [weak self] result, error in
+            if let error = error {
+                print("❌ Firebase Apple sign-in error: \(error.localizedDescription)")
                 return
             }
-            
-            let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idTokenString, rawNonce: nonce)
-            
-            Auth.auth().signIn(with: credential) { result, error in
-                if let error = error {
-                    print("Firebase Apple sign-in error: \(error.localizedDescription)")
-                } else {
-                    print("Signed in with Apple")
-                    self.checkIfSignedIn()
-                    if let user = result?.user {
-                        self.setProfile(user: user)
-                        print("set profile called")
-                    }
-                    self.isSignedIn = true
-                    // You can publish user data here if needed
-                }
+            guard let self else { return }
+            print("✅ Signed in with Apple")
+            if let user = result?.user {
+                self.setProfile(user: user)
+                self.userName = user.displayName
+                self.userEmail = user.email
             }
         }
     }
-    
+
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        print("Apple Sign-In failed: \(error.localizedDescription)")
-        self.checkIfSignedIn()
+        print("❌ Apple Sign-In failed: \(error.localizedDescription)")
     }
 }
 
 extension AuthViewModel: ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        return UIApplication.shared.windows.first { $0.isKeyWindow }!
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = scene.windows.first(where: { $0.isKeyWindow }) {
+            return window
+        }
+        // Fallback: create a new window if none is key.
+        return UIWindow()
     }
+}
+
+// MARK: - Helpers
+
+private func sha256(_ input: String) -> String {
+    let inputData = Data(input.utf8)
+    let hashed = SHA256.hash(data: inputData)
+    return hashed.compactMap { String(format: "%02x", $0) }.joined()
+}
+
+private func randomNonceString(length: Int = 32) -> String {
+    let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+    var result = ""
+    result.reserveCapacity(length)
+    var remaining = length
+
+    while remaining > 0 {
+        var random: UInt8 = 0
+        let status = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
+        if status == errSecSuccess {
+            let idx = Int(random) % charset.count
+            result.append(charset[idx])
+            remaining -= 1
+        }
+    }
+    return result
+}
+
+
+// Change Auth states (if user Signed In or not)
+extension Notification.Name {
+    static let authDidSignIn  = Notification.Name("authDidSignIn")
+    static let authDidSignOut = Notification.Name("authDidSignOut")
+    static let sessionWillEnd = Notification.Name("sessionWillEnd")
 }

@@ -168,7 +168,7 @@ final class AccountDeletionViewModel: ObservableObject {
             // after successful delete (phase -> .done) do:
             DispatchQueue.main.async {
                 authVM.signOut()   // sets isSignedIn = false; UI jumps to SignInView()
-                authVM.isSignedIn = false
+                NotificationCenter.default.post(name: .authDidSignOut, object: nil)
             }
             authVM.checkIfSignedIn()
 

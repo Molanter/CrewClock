@@ -33,7 +33,7 @@ struct SignInView: View {
             DVDScreensaverBackground(
                 image: Image("dvd.logo"),
                 logoSize: .init(width: 110, height: 80),
-                speed: isPreview ? 120 : 180,
+                speed: 125,
                 background: colorScheme == .dark ? .black : .white,
                 useAnimationSchedule: isPreview // true for previews
             )
@@ -86,6 +86,7 @@ struct SignInView: View {
             Text("Welcome to:").foregroundStyle(.secondary)
             Text("Crew's Clock").font(.title.bold())
             Text("Sign In to use the app features.").foregroundStyle(.secondary)
+                .padding(.bottom, K.UI.padding*2)
         }
     }
 
@@ -131,15 +132,15 @@ struct SignInView: View {
     private var buttons: some View {
         VStack(spacing: K.UI.padding) {
             if !showEmailSignIn {
-                SignInButtonView(text: "Email", image: "envelope", colored: false) {
+                SignInButtonView(text: "Continue with Email", image: "envelope", colored: false) {
                     withAnimation(.easeInOut) { showEmailSignIn.toggle() }
                 }
                 .bold()
             }
-            SignInButtonView(text: "Apple", image: "apple.logo", colored: false) {
+            SignInButtonView(text: "Continue with Apple", image: "apple.logo", colored: false) {
                 viewModel.handleAppleSignIn()
             }
-            SignInButtonView(text: "Google", image: "google.g.logo", colored: false) {
+            SignInButtonView(text: "Continue with Google", image: "google.g.logo", colored: false) {
                 viewModel.signInWithGoogle()
             }
         }

@@ -40,7 +40,7 @@ struct DVDScreensaverBackground: View {
             Group {
                 if let img = image {
                     Color(hue: hue, saturation: 0.9, brightness: 1)
-                        .mask(img.resizable().scaledToFit())
+                        .mask(img.resizable().scaledToFill())
                 } else {
                     ZStack {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)

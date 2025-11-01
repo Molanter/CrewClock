@@ -16,7 +16,6 @@ struct ContentView: View {
 
             // Default row background for every List row:
             UITableViewCell.appearance().backgroundColor = UIColor.systemBackground
-            // Or a custom color: UIColor { trait in ... }
         }
     
     var body: some View {
