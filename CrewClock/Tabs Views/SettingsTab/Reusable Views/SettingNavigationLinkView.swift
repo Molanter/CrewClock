@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct SettingNavigationLinkView: View {
+    @EnvironmentObject var publishedVars: PublishedVariebles
+
     let type: SettingsNavigationLinks
     
     var body: some View {
@@ -18,6 +20,8 @@ struct SettingNavigationLinkView: View {
         NavigationLink {
             if type == .deleteAccount {
                 DeleteAccountView().environmentObject(AccountDeletionViewModel()).environmentObject(AuthViewModel())
+//                    .toolbar(publishedVars.navLink.isEmpty ? .visible : .hidden, for: .tabBar)
+
                     .hideTabBarWhileActive(type.title)
             }else {
                 type.destination

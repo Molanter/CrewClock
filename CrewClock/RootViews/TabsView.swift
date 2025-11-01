@@ -86,6 +86,9 @@ struct TabsView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .tabViewSearchActivation(.searchTabSelection)
+        .toolbar(publishedVars.navLink.isEmpty ? .visible : .hidden, for: .tabBar)
+
     }
     
     private var modernTabsViews: some View {

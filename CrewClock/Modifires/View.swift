@@ -45,7 +45,5 @@ struct HideTabBarWhileActive: ViewModifier {
                 }
                 didSetKey = false
             }
-        // Hiding bottom accesory 
-            .preference(key: ShouldHideBottomAccessory.self, value: true)
     }
 }
