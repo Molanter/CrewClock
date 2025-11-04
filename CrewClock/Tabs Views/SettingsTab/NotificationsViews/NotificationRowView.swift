@@ -42,6 +42,7 @@ struct NotificationRowView: View {
                 }label: {
                     Image(systemName: "trash")
                 }
+                .tint(.red)
             }
             .navigationDestination(item: $taskToOpen) { taskId in
                 TaskDetailView(taskId: taskId)

@@ -91,8 +91,13 @@ struct SettingsTabView: View {
     private func profileViewLink(user: UserFB) -> some View {
         Group {
             NavigationLink {
-                ProfileEditView(isFinishingProfile: profileCheckVM.isIncomplete)
-                    .hideTabBarWhileActive("profile")
+                if profileCheckVM.isIncomplete {
+                    ProfileEditView(isFinishingProfile: profileCheckVM.isIncomplete)
+                        .hideTabBarWhileActive("profile")
+                }else {
+                    ProfileView(uid: user.uid)
+                        .hideTabBarWhileActive("profile")
+                }
             } label: {
                 if profileCheckVM.isIncomplete {
                     HStack(spacing: 5) {
@@ -192,6 +197,13 @@ struct SettingsTabView: View {
         )
         
         notificationsViewModel.getFcmByUid(uid: uid, notification: newNotification)
+        
+        Toast.shared.present(
+            title: "Push sent",
+            symbol: "checkmark",
+            isUserInteractionEnabled: true,
+            timing: .medium
+        )
     }
 }
 

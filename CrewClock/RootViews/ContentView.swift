@@ -20,9 +20,11 @@ struct ContentView: View {
     
     var body: some View {
         if hasSeenOnboarding{
-            RootView()
-                .accentColor(K.Colors.accent)
-                .tint(K.Colors.accent)
+            ToastNavigationView {
+                RootView()
+                    .accentColor(K.Colors.accent)
+                    .tint(K.Colors.accent)
+            }
         }else {
             OnboardingView(
                 isShowing: Binding(

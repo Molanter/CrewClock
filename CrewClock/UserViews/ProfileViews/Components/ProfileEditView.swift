@@ -9,12 +9,14 @@ import SwiftUI
 import PhotosUI
 
 struct ProfileEditView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var userVM: UserViewModel
     @StateObject private var vm = ProfileEditViewModel()
 
     @State private var newTag: String = ""
     @State private var newLanguage: String = ""
-    
+    @State private var showLegacyPicker = false
+
     var isFinishingProfile: Bool = false
 
     var body: some View {
@@ -41,7 +43,7 @@ struct ProfileEditView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Save") {
-                    Task { await vm.save(userVM: userVM) }
+                    saveFunc()
                 }
                 .disabled(vm.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
@@ -52,9 +54,6 @@ struct ProfileEditView: View {
             if userVM.user == nil {
                 userVM.fetchUser()
             }
-        }
-        .alert("Saved", isPresented: $vm.saveDone) {
-            Button("OK", role: .cancel) { vm.saveDone = false }
         }
         .alert("Error", isPresented: .constant(vm.error != nil), actions: {
             Button("OK", role: .cancel) { vm.error = nil }
@@ -94,11 +93,16 @@ struct ProfileEditView: View {
         .overlay(Circle().stroke(.quaternary, lineWidth: 1))
     }
 
-    /// PhotosPicker trigger
+    /// System crop flow using UIImagePickerController (allowsEditing)
     private var changePhotoButton: some View {
-        PhotosPicker("Change photo", selection: $vm.pickerItem, matching: .images)
-            .onChange(of: vm.pickerItem) { old, new in
-                Task { await vm.handlePickedPhoto() }
+        Button("Change photo") { showLegacyPicker = true }
+            .sheet(isPresented: $showLegacyPicker) {
+                LegacyImagePicker(allowsEditing: true) { img in
+                    vm.setAvatarImage(img)
+                    showLegacyPicker = false
+                } onCancel: {
+                    showLegacyPicker = false
+                }
             }
     }
     
@@ -224,11 +228,29 @@ struct ProfileEditView: View {
     /// Save button reused by toolbar and section
     private var saveButton: some View {
         Button {
-            Task { await vm.save(userVM: userVM) }
+            saveFunc()
         } label: {
-            if vm.isSaving { ProgressView() } else { Text("Save changes") }
+            if vm.isSaving {
+                ProgressView()
+            } else {
+                Text("Save changes")
+                    .frame(maxWidth: .infinity)
+            }
         }
         .disabled(vm.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+    
+    //MARK: - Functions
+    
+    private func saveFunc() {
+        Task { await vm.save(userVM: userVM) }
+        Toast.shared.present(
+            title: "Profile updated",
+            symbol: "checkmark",
+            isUserInteractionEnabled: true,
+            timing: .medium
+        )
+        dismiss()
     }
 }
 
@@ -237,3 +259,4 @@ struct ProfileEditView: View {
     ProfileEditView(isFinishingProfile: false)
         .environmentObject(UserViewModel())
 }
+    
