@@ -23,7 +23,6 @@ struct ContentView: View {
             ToastNavigationView {
                 RootView()
                     .accentColor(K.Colors.accent)
-                    .tint(K.Colors.accent)
             }
         }else {
             OnboardingView(

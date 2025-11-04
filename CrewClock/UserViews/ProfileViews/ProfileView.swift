@@ -25,34 +25,51 @@ struct ProfileView: View {
         colorScheme == .dark ? .white.opacity(0.3) : .black.opacity(0.3)
     }
 
+    // MARK: - Body
     var body: some View {
-        NavigationStack {
-            list
-                .sheet(isPresented: $showReport) { ReportView() }
-                .onAppear {
-                    vm.loadUser(uid: uid)
-                    // Ensure we have the signed-in user's connection list to evaluate status.
-                    connectionsVM.fetchAllConnections()
-                }
+        NavigationStack { contentList }
+            .sheet(isPresented: $showReport) { ReportView() }
+            .onAppear(perform: loadProfile)
+    }
+
+    /// Root list content shown inside the navigation
+    private var contentList: some View {
+        GlassList {
+            headerSection
+            statsSection
+            actionsSection
         }
     }
 
-    private var list: some View {
-        ScrollView {
+    /// Header card with avatar, name, bio, and tags
+    private var headerSection: some View {
+        Section {
             profileHeader
-                .padding(.horizontal, K.UI.padding)
-
-            statsScrollBar
-                .padding(.horizontal, K.UI.padding)
-                .padding(.vertical, K.UI.padding/2)
-            
-            mainButtonsRow
-                .padding(.horizontal, K.UI.padding)
+                .listRowInsets(EdgeInsets())
         }
-//        .scrollContentBackground(.hidden)
-//        .background { ListBackground() }
     }
 
+    /// Horizontal stats scroller (Connections, Projects, etc.)
+    private var statsSection: some View {
+        Section {
+            statsScrollBar
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+        }
+        .listSectionSpacing(5)
+    }
+
+    /// Primary actions row (Edit/Connect and overflow menu)
+    private var actionsSection: some View {
+        Section {
+            mainButtonsRow
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+        }
+        .listSectionSpacing(5)
+    }
+
+    /// Card-styled header surface with image, name, bio, and optional tags
     private var profileHeader: some View {
         VStack(alignment: .leading) {
             HStack {
@@ -78,6 +95,7 @@ struct ProfileView: View {
         }
     }
 
+    /// Avatar with subtle shadow and a contextual overlay
     private var profilePicturePart: some View {
         ZStack(alignment: .bottomTrailing) {
             ZStack {
@@ -101,6 +119,7 @@ struct ProfileView: View {
         }
     }
 
+    /// Small overlay icon indicating connection state or action
     @ViewBuilder
     private func connectionOverlay() -> some View {
         // Only for other users. Hide for self.
@@ -134,6 +153,7 @@ struct ProfileView: View {
         }
     }
 
+    /// Thin divider inside the header card
     private var profileHeaderDivider: some View {
         RoundedRectangle(cornerRadius: 1)
             .frame(height: 1)
@@ -147,28 +167,32 @@ struct ProfileView: View {
                 .font(.title2.bold())
                 .redacted(reason: vm.isLoading ? .placeholder : [])
             Spacer()
-            if let city = vm.viewedUser?.city, let country = vm.viewedUser?.country {
-                Group {
-                    if !city.isEmpty, !country.isEmpty {
-                        Text("\(city), \(country)")
-                    }else if !city.isEmpty, country.isEmpty {
-                        Text("\(city)")
-                    }else if city.isEmpty, !country.isEmpty {
-                        Text("\(country)")
-                    }
-                }
-                .foregroundStyle(.secondary)
-                .font(.body)
+            if let loc = formattedLocation(city: vm.viewedUser?.city, country: vm.viewedUser?.country) {
+                Text(loc)
+                    .foregroundStyle(.secondary)
+                    .font(.body)
             }
         }
     }
 
+    /// Formats location line from optional city and country
+    private func formattedLocation(city: String?, country: String?) -> String? {
+        let c = (city ?? "").trimmingCharacters(in: .whitespaces)
+        let r = (country ?? "").trimmingCharacters(in: .whitespaces)
+        if !c.isEmpty && !r.isEmpty { return "\(c), \(r)" }
+        if !c.isEmpty { return c }
+        if !r.isEmpty { return r }
+        return nil
+    }
+
+    /// Profile bio or a placeholder text
     private var descriptionRow: some View {
         Text(vm.viewedUser?.description ?? "No bio yet.")
             .font(.body)
             .redacted(reason: vm.isLoading ? .placeholder : [])
     }
     
+    /// Horizontal list of profile tags
     private var tagsRow: some View {
         Group {
             if let tags = vm.viewedUser?.tags, !tags.isEmpty {
@@ -193,6 +217,7 @@ struct ProfileView: View {
     }
 
 
+    /// Horizontal scroll of profile statistics
     private var statsScrollBar: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 10) {
@@ -200,6 +225,7 @@ struct ProfileView: View {
                     if let vuid = vm.viewedUser?.uid {
                         UserConnectionsView(viewingUid: vuid)
                             .environmentObject(connectionsVM)
+                            .hideTabBarWhileActive("connections")
                     } else {
                         Text("Connections")
                     }
@@ -217,76 +243,100 @@ struct ProfileView: View {
         .cornerRadius(K.UI.cornerRadius)
     }
 
+    /// Row with the main action button and overflow menu
     private var mainButtonsRow: some View {
         HStack(spacing: 10) {
-            mainButton
-
-            Menu {
-                Button {
-                    showReport.toggle()
-                } label: {
-                    Label("Report", systemImage: "exclamationmark.triangle")
-                        .tint(.red)
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .frame(width: 30, height: 30)
-            }
-            .frame(width: 45, height: 45)
-            .background {
-                TransparentBlurView(removeAllFilters: false)
-                    .blur(radius: 5, opaque: true)
-                    .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
-            }
-            .clipShape(Circle())
+            mainActionButton
+            overflowMenu
         }
         .buttonStyle(.plain)
     }
-    
-    private var mainButton: some View {
+
+    /// "Edit Profile" for self, or Connect/Disconnect for other users
+    private var mainActionButton: some View {
         Group {
             if isViewingSelf() {
-                NavigationLink {
-                    ProfileEditView()
-                } label: {
-                    Label("Edit Profile", systemImage: "pencil")
-                        .padding(K.UI.padding)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 45)
-                        .background(K.Colors.accent)
-                        .clipShape(Capsule())
-                }
+                selfMainButton
             } else {
-                Button {
-                    let status = connectionStatusForViewed()
-                    if status == .accepted {
-                        showDisconnectAlert = true            // tap "Connected" → ask to disconnect
-                    } else {
-                        connectIfNeeded()                     // send or re-open invite
-                    }
-                } label: {
-                    Label(connectButtonTitle(), systemImage: "link")
-                        .padding(K.UI.padding)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 45)
-                        .foregroundStyle(connectButtonForeground())
-                        .background(connectButtonBackground())
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.gray.opacity(connectButtonBackground() == .clear ? 0.4 : 0.0), lineWidth: 1)
-                        )
-                        .clipShape(Capsule())
-                }
-                .disabled(connectButtonDisabled())
-                .alert("Disconnect?", isPresented: $showDisconnectAlert) {
-                    Button("Cancel", role: .cancel) {}
-                    Button("Disconnect", role: .destructive) { disconnectIfConfirmed() }
-                } message: {
-                    Text("This will remove the connection. You can reconnect later.")
-                }
+                otherMainButton
             }
         }
     }
+
+    /// Self-profile main action leading to the editor without chevron
+    private var selfMainButton: some View {
+        ZStack {
+            Label("Edit Profile", systemImage: "pencil")
+                .foregroundStyle(.primary)
+                .padding(K.UI.padding)
+                .frame(maxWidth: .infinity)
+                .frame(height: 45)
+                .background(K.Colors.accent)
+                .clipShape(Capsule())
+            NavigationLink { ProfileEditView() } label: { EmptyView() }
+                .opacity(0) // hidden, so no chevron
+        }
+    }
+
+    /// Connect/Disconnect button for viewing another user's profile
+    private var otherMainButton: some View {
+        Button {
+            let status = connectionStatusForViewed()
+            if status == .accepted {
+                showDisconnectAlert = true            // tap "Connected" → ask to disconnect
+            } else {
+                connectIfNeeded()                     // send or re-open invite
+            }
+        } label: {
+            connectButtonLabel
+        }
+        .buttonStyle(.plain)
+        .disabled(connectButtonDisabled())
+        .alert("Disconnect?", isPresented: $showDisconnectAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Disconnect", role: .destructive) { disconnectIfConfirmed() }
+        } message: {
+            Text("This will remove the connection. You can reconnect later.")
+        }
+    }
+
+    /// Visual content of the connect/disconnect button reflecting state
+    private var connectButtonLabel: some View {
+        Label(connectButtonTitle(), systemImage: "link")
+            .padding(K.UI.padding)
+            .frame(maxWidth: .infinity)
+            .frame(height: 45)
+            .foregroundStyle(connectButtonForeground())
+            .background(connectButtonBackground())
+            .overlay(
+                Capsule()
+                    .stroke(Color.gray.opacity(connectButtonBackground() == .clear ? 0.4 : 0.0), lineWidth: 1)
+            )
+            .clipShape(Capsule())
+    }
+
+    /// Overflow menu with report option
+    private var overflowMenu: some View {
+        Menu {
+            Button { showReport.toggle() } label: {
+                Label("Report", systemImage: "exclamationmark.triangle")
+                    .tint(.red)
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .frame(width: 30, height: 30)
+        }
+        .frame(width: 45, height: 45)
+        .background {
+            TransparentBlurView(removeAllFilters: false)
+                .blur(radius: 5, opaque: true)
+                .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+        }
+        .clipShape(Circle())
+    }
+    
+    /// Backward-compat shim kept for minimal diff; points to mainActionButton
+    private var mainButton: some View { mainActionButton }
 
     // Helper for self-profile detection
     private func isViewingSelf() -> Bool {
@@ -368,6 +418,12 @@ struct ProfileView: View {
     private func shadowColor() -> Color {
         colorScheme == .dark ? Color.black.opacity(0.2) : Color.white.opacity(0.2)
     }
+    
+    /// Loads the profile and ensures connection list is available
+    private func loadProfile() {
+        vm.loadUser(uid: uid)
+        connectionsVM.fetchAllConnections()
+    }
 }
 
 // MARK: - Preview
@@ -382,3 +438,4 @@ struct ProfileView: View {
         .preferredColorScheme(.dark)
         .environmentObject(ConnectionsViewModel())
 }
+

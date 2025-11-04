@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct TaskRow: View {
+    @Environment(\.colorScheme) var colorScheme
+
     let task: TaskModel
     
     var body: some View {
@@ -19,22 +21,44 @@ struct TaskRow: View {
                         Image(systemName: "calendar")
                         Text(due.formatted(date: .abbreviated, time: .omitted))
                     }
-//                    if ((task.teamId) == nil) {
-//                        Text("Team").font(.caption2).padding(.horizontal, 6).padding(.vertical, 2)
-//                            .background(Capsule().fill(.thinMaterial))
-//                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
             Spacer()
             VStack {
-                statusPill(task.status)
                 Text(task.priorityLabel.capitalized)
                     .font(.caption)
                     .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Capsule().fill(.ultraThinMaterial))
+                    .background {
+                        TransparentBlurView(removeAllFilters: false)
+                            .blur(radius: 5, opaque: true)
+                            .background(priorityColor(priority: task.priority).opacity(0.5))
+                            .overlay(
+                                Capsule()
+                                    .stroke(priorityColor(priority: task.priority), lineWidth: 1.5)
+                            )
+                    }
+                    .clipShape(Capsule())
+                statusPill(task.status)
+
             }
+        }
+    }
+    
+    private func priorityColor(priority: Int) -> Color {
+        if priority == 1 {
+            return .green
+        }else if priority == 2 {
+            return .blue
+        }else if priority == 3 {
+            return . yellow
+        }else if priority == 4 {
+            return .orange
+        }else if priority == 5 {
+            return .red
+        }else {
+            return .gray
         }
     }
     
@@ -42,9 +66,6 @@ struct TaskRow: View {
         Text(status.capitalized)
             .font(.caption2).bold()
             .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(
-                Capsule().fill(statusColor(status).opacity(0.15))
-            )
             .foregroundStyle(statusColor(status))
     }
     

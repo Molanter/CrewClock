@@ -16,6 +16,13 @@ struct ProfileEditView: View {
     @State private var newTag: String = ""
     @State private var newLanguage: String = ""
     @State private var showLegacyPicker = false
+    @State private var showCountryPicker = false
+    @State private var countryQuery = ""
+    private let allCountries: [String] = {
+        Locale.isoRegionCodes
+            .compactMap { Locale.current.localizedString(forRegionCode: $0) }
+            .sorted()
+    }()
 
     var isFinishingProfile: Bool = false
 
@@ -29,12 +36,15 @@ struct ProfileEditView: View {
             
             // Location (at least Country required)
             locationSection
+            locationHelperSection
             
             // Tags (at least one required)
             tagsSection
+            tagChipsSection
             
             // Languages (at least one required)
             languagesSection
+            languageChipsSection
             
             // Save CTA
             saveSection
@@ -58,6 +68,7 @@ struct ProfileEditView: View {
         .alert("Error", isPresented: .constant(vm.error != nil), actions: {
             Button("OK", role: .cancel) { vm.error = nil }
         }, message: { Text(vm.error ?? "") })
+        .hideTabBarWhileActive("edit")
     }
 
     // MARK: - Sections (private computed views)
@@ -120,26 +131,92 @@ struct ProfileEditView: View {
     private var locationSection: some View {
         Section {
             TextField("City", text: $vm.city)
+                .textContentType(.addressCity)
             TextField("Country *", text: $vm.country)
-        } footer: {
+                .textContentType(.countryName)
+        }
+    }
+    
+    private var locationHelperSection: some View {
+        Section {
+            countryHelperRow
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+        }footer: {
             Text("At least country is required")
                 .font(.footnote)
                 .foregroundStyle(vm.country.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .red : .secondary)
         }
+        .listSectionSpacing(5)
+    }
+
+    /// Quick helpers to fill the Country field
+    private var countryHelperRow: some View {
+        HStack(spacing: 10) {
+            Button {
+                showCountryPicker = true
+            } label: {
+                Label("Pick from list", systemImage: "list.bullet")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+
+            Button {
+                if let code = Locale.current.region?.identifier,
+                   let name = Locale.current.localizedString(forRegionCode: code) {
+                    vm.country = name
+                }
+            } label: {
+                Label("Use current", systemImage: "location")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+        }
+        .tint(.secondary)
+        .sheet(isPresented: $showCountryPicker) {
+            NavigationStack {
+                List(filteredCountries, id: \.self) { country in
+                    Button(country) {
+                        vm.country = country
+                        showCountryPicker = false
+                    }
+                }
+                .navigationTitle("Select Country")
+                .searchable(text: $countryQuery, placement: .navigationBarDrawer(displayMode: .always))
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { showCountryPicker = false }
+                    }
+                }
+                .tint(.primary)
+            }
+        }
+    }
+
+    private var filteredCountries: [String] {
+        let q = countryQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        if q.isEmpty { return allCountries }
+        return allCountries.filter { $0.localizedCaseInsensitiveContains(q) }
     }
     
     /// Tags input with chips (at least one required)
     private var tagsSection: some View {
         Section {
-            VStack(alignment: .leading, spacing: 8) {
-                tagInputRow
-                tagChips
-            }
-        } header: { Text("Tags *") } footer: {
+            tagInputRow
+        } header: { Text("Tags *") }
+    }
+    
+    private var tagChipsSection: some View {
+        Section {
+            tagChips
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+        }footer: {
             Text("At least one required")
                 .font(.footnote)
                 .foregroundStyle(vm.tags.count < 1 ? Color.red : Color.secondary)
         }
+        .listSectionSpacing(5)
     }
 
     /// Inline row to add a single tag
@@ -161,12 +238,13 @@ struct ProfileEditView: View {
     /// Chips list of added tags with remove action
     private var tagChips: some View {
         WrapChips(items: vm.tags) { tag in
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 Text(tag)
                 Button {
                     vm.tags.removeAll { $0 == tag }
                 } label: { Image(systemName: "xmark.circle.fill") }
                 .buttonStyle(.borderless)
+                .tint(.red)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -177,15 +255,21 @@ struct ProfileEditView: View {
     /// Languages input with chips (at least one required)
     private var languagesSection: some View {
         Section {
-            VStack(alignment: .leading, spacing: 8) {
                 languageInputRow
-                languageChips
-            }
-        } header: { Text("Languages *") } footer: {
+        } header: { Text("Languages *") }
+    }
+    
+    private var languageChipsSection: some View {
+        Section {
+            languageChips
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+        }footer: {
             Text(vm.languages.isEmpty ? "At least one language required" : "At least one required")
                 .font(.footnote)
                 .foregroundStyle(vm.languages.isEmpty ? .red : .secondary)
         }
+        .listSectionSpacing(5)
     }
 
     /// Inline row to add a single language
@@ -207,12 +291,13 @@ struct ProfileEditView: View {
     /// Chips list of added languages with remove action
     private var languageChips: some View {
         WrapChips(items: vm.languages) { lang in
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 Text(lang)
                 Button {
                     vm.languages.removeAll { $0 == lang }
                 } label: { Image(systemName: "xmark.circle.fill") }
                 .buttonStyle(.borderless)
+                .tint(.red)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -253,7 +338,6 @@ struct ProfileEditView: View {
         dismiss()
     }
 }
-
 
 #Preview {
     ProfileEditView(isFinishingProfile: false)

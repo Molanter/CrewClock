@@ -18,31 +18,14 @@ struct WrapChips<Content: View>: View {
     }
 
     var body: some View {
-        var width: CGFloat = 0
-        var height: CGFloat = 0
-
-        return GeometryReader { geo in
-            ZStack(alignment: .topLeading) {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 8) {
                 ForEach(items, id: \.self) { item in
                     chip(item)
                         .padding(4)
-                        .alignmentGuide(.leading) { d in
-                            if abs(width - d.width) > geo.size.width {
-                                width = 0
-                                height -= d.height
-                            }
-                            let result = width
-                            if item == items.last { width = 0 }
-                            width += d.width
-                            return result
-                        }
-                        .alignmentGuide(.top) { _ in
-                            let result = height
-                            if item == items.last { height = 0 }
-                            return result
-                        }
                 }
             }
-        }.frame(minHeight: 44)
+        }
+        .frame(maxHeight: 60)
     }
 }
