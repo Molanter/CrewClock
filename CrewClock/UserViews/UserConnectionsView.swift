@@ -9,15 +9,14 @@ import SwiftUI
 import FirebaseAuth
 
 struct UserConnectionsView: View {
-    @EnvironmentObject private var userViewModel: UserViewModel
     @EnvironmentObject private var connectionsVM: ConnectionsViewModel
 
-    // Map every relationship to: (other user's uid, status)
-    private var connectionItems: [(uid: String, status: String)] {
-        let me = userViewModel.user?.uid ?? Auth.auth().currentUser?.uid
-        guard let me else { return [] }
+    /// If nil → use the current authenticated user
+    let viewingUid: String?
 
-        return connectionsVM.connections.compactMap { conn -> (uid: String, status: String)? in
+    // Map every relationship to: (other user's uid, status) relative to the viewing uid
+    private func connectionItems(for me: String) -> [(uid: String, status: String)] {
+        connectionsVM.connections.compactMap { conn -> (uid: String, status: String)? in
             guard let other = conn.uids.first(where: { $0 != me }) else { return nil }
             let status = conn.status.rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             return (uid: other, status: status)
@@ -26,7 +25,13 @@ struct UserConnectionsView: View {
 
     var body: some View {
         Group {
-            if connectionItems.isEmpty {
+            let me = viewingUid ?? Auth.auth().currentUser?.uid
+            if let me, !connectionsVM.connections.isEmpty {
+                List(connectionItems(for: me), id: \.uid) { item in
+                    row(for: item.uid, status: item.status)
+                }
+                .listStyle(.insetGrouped)
+            } else if let me {
                 VStack(spacing: 12) {
                     Text("No connections yet")
                         .font(.headline)
@@ -37,15 +42,23 @@ struct UserConnectionsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .multilineTextAlignment(.center)
             } else {
-                List(connectionItems, id: \.uid) { item in
-                    row(for: item.uid, status: item.status)
+                VStack(spacing: 12) {
+                    Text("Not signed in")
+                        .font(.headline)
+                    Text("Sign in to view connections.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                .listStyle(.insetGrouped)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .navigationTitle("Connections")
         .onAppear {
-            connectionsVM.fetchAllConnections()
+            if let uid = viewingUid ?? Auth.auth().currentUser?.uid {
+                connectionsVM.fetchAllConnections(for: uid)
+            } else {
+                connectionsVM.connections = []
+            }
         }
     }
 
@@ -55,19 +68,14 @@ struct UserConnectionsView: View {
             UserRowView(uid: uid)
             Spacer()
 
-            // Status / Actions
             if status == "accepted" {
                 disconnectButton(for: uid)
             } else {
-                // Show a simple status tag for non-accepted states
                 Text(statusDisplay(status))
                     .font(.caption.weight(.medium))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color(.systemGray5))
-                    )
+                    .background(Capsule().fill(Color(.systemGray5)))
                     .foregroundStyle(.secondary)
             }
         }
@@ -79,27 +87,28 @@ struct UserConnectionsView: View {
         case "pending":  return "Pending"
         case "declined": return "Declined"
         case "removed":  return "Removed"
-        default:         return raw.capitalized.isEmpty ? "Unknown" : raw.capitalized
+        default:
+            let c = raw.capitalized
+            return c.isEmpty ? "Unknown" : c
         }
     }
 
+    /// Uses current authenticated user’s authority to remove a connection with `uid`.
     @ViewBuilder
     private func disconnectButton(for uid: String) -> some View {
         Button(role: .destructive) {
-            disconnect(uid)
+            connectionsVM.removeConnection(uid)
+            if let forUid = viewingUid ?? Auth.auth().currentUser?.uid {
+                connectionsVM.fetchAllConnections(for: forUid)
+            }
         } label: {
             Text("Disconnect")
         }
     }
-
-    private func disconnect(_ uid: String) {
-        connectionsVM.removeConnection(uid)
-        connectionsVM.fetchAllConnections()
-    }
 }
 
 #Preview {
-    UserConnectionsView()
-        .environmentObject(UserViewModel())
+    UserConnectionsView(viewingUid: nil)
         .environmentObject(ConnectionsViewModel())
+        .environmentObject(UserViewModel())
 }

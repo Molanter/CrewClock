@@ -13,8 +13,25 @@ struct UserRowView: View {
     @EnvironmentObject private var userViewModel: UserViewModel
     
     var uid: String
+    var showProfile: Bool = true
     
     var body: some View {
+        Group {
+            ZStack {
+                row
+                    .contentShape(Rectangle()) // make entire row tappable
+                // Disable NavigationLink if do not need to show profile
+                if showProfile{
+                    NavigationLink(destination: ProfileView(uid: uid).hideTabBarWhileActive("profile")) {
+                        EmptyView()
+                    }
+                    .opacity(0) // hidden, so no chevron
+                }
+            }
+        }
+    }
+    
+    private var row: some View {
         Group {
             if let user = userViewModel.getUser(uid) {
                 HStack {
@@ -44,6 +61,10 @@ struct UserRowView: View {
                UserProfileImageCircle(urlString)
             .frame(width: 40, height: 40)
             .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color.gray, lineWidth: 1)
+            )
         } else {
             initialsCircle(user)
         }

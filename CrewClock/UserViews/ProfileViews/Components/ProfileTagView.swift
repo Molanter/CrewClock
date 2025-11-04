@@ -1,17 +1,18 @@
 //
-//  ProfileStatsView.swift
+//  ProfileTagView.swift
 //  CrewClock
 //
-//  Created by Edgars Yarmolatiy on 11/1/25.
+//  Created by Edgars Yarmolatiy on 11/4/25.
 //
 
 import SwiftUI
 
-struct ProfileStatsView: View {
+struct ProfileTagView: View {
     @Environment(\.colorScheme) var colorScheme
     
     //View Inputs
-    var number: Int = 0
+    var isTag: Bool = false
+    var image: String = ""
     var text: String = ""
 
     private var sheetStrokeColor: Color {
@@ -21,7 +22,18 @@ struct ProfileStatsView: View {
     //View Outut
     var body: some View {
         HStack {
-            Text("\(number) \(text)")
+            Group {
+                if isTag {
+                    Text("#\(text.lowercased())")
+                }else if image != "", !isTag {
+                    HStack {
+                        Image(systemName: image)
+                        Text(text)
+                    }
+                }else {
+                    Text(text)
+                }
+            }
                 .font(.callout)
                 .lineLimit(0)
                 .fixedSize(horizontal: true, vertical: true)
@@ -41,7 +53,6 @@ struct ProfileStatsView: View {
     }
 }
 
-
 #Preview {
-    ProfileView(uid: nil)
+    ProfileTagView()
 }

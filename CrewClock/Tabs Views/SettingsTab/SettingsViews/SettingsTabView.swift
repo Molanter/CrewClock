@@ -78,7 +78,7 @@ struct SettingsTabView: View {
                     }
                 }
                 .padding(.vertical)
-                NavigationLink("Profile Info", destination: UserRowView(uid: user.uid))
+                NavigationLink("Profile Info", destination: ProfileView(uid: user.uid))
             }
         }
     }
@@ -102,7 +102,7 @@ struct SettingsTabView: View {
     ///Connections NavigationLink
     private var connections: some View {
         NavigationLink {
-            UserConnectionsView()
+            UserConnectionsView(viewingUid: nil)
                 .hideTabBarWhileActive("myLogs")
         } label: {
             let count = connectionsVM.connections.filter { $0.status == .accepted }.count

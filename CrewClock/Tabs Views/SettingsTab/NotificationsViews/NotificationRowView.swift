@@ -95,7 +95,7 @@ struct NotificationRowView: View {
                 .foregroundStyle(.secondary)
         }
         .font(.caption)
-        .padding(.top, 10)
+        .padding(.top, 7)
     }
     
     private var profilePicture: some View {
@@ -126,7 +126,7 @@ struct NotificationRowView: View {
             secondAction(notification.type)
         } label: {
             Text("Reject")
-                .padding(K.UI.padding)
+                .padding(K.UI.padding/2)
                 .frame(maxWidth: .infinity)
                 .background {
                     RoundedRectangle(cornerRadius: K.UI.cornerRadius)
@@ -141,7 +141,7 @@ struct NotificationRowView: View {
             mainAction(notification.type)
         } label: {
             Text(notification.type.mainAction)
-                .padding(K.UI.padding)
+                .padding(K.UI.padding/2)
                 .frame(maxWidth: .infinity)
                 .background {
                     RoundedRectangle(cornerRadius: K.UI.cornerRadius)

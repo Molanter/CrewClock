@@ -15,6 +15,7 @@
 		9E380C8F2DE635190023654A /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 9E380C8E2DE635190023654A /* GoogleSignIn */; };
 		9E380C912DE635190023654A /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9E380C902DE635190023654A /* GoogleSignInSwift */; };
 		9E8C07D22DFC820100585158 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 9E8C07D12DFC820100585158 /* FirebaseFunctions */; };
+		9E96DBFB2EB9C779001E8905 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 9E96DBFA2EB9C779001E8905 /* FirebaseStorage */; };
 		9EBA39FE2E31CCB0004057A3 /* Popovers in Frameworks */ = {isa = PBXBuildFile; productRef = 9EBA39FD2E31CCB0004057A3 /* Popovers */; };
 /* End PBXBuildFile section */
 
@@ -51,6 +52,7 @@
 				9EBA39FE2E31CCB0004057A3 /* Popovers in Frameworks */,
 				9E023DF22E2E992900B4865D /* FirebaseMessaging in Frameworks */,
 				9E023DDF2E2DD19800B4865D /* SDWebImageSwiftUI in Frameworks */,
+				9E96DBFB2EB9C779001E8905 /* FirebaseStorage in Frameworks */,
 				9E380C912DE635190023654A /* GoogleSignInSwift in Frameworks */,
 				9E380C812DE621110023654A /* FirebaseCore in Frameworks */,
 				9E380C8F2DE635190023654A /* GoogleSignIn in Frameworks */,
@@ -108,6 +110,7 @@
 				9E023DDE2E2DD19800B4865D /* SDWebImageSwiftUI */,
 				9E023DF12E2E992900B4865D /* FirebaseMessaging */,
 				9EBA39FD2E31CCB0004057A3 /* Popovers */,
+				9E96DBFA2EB9C779001E8905 /* FirebaseStorage */,
 			);
 			productName = CrewClock;
 			productReference = 9E380C6C2DE61F160023654A /* CrewClock.app */;
@@ -470,6 +473,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9E380C7D2DE621110023654A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFunctions;
+		};
+		9E96DBFA2EB9C779001E8905 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9E380C7D2DE621110023654A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
 		};
 		9EBA39FD2E31CCB0004057A3 /* Popovers */ = {
 			isa = XCSwiftPackageProductDependency;
