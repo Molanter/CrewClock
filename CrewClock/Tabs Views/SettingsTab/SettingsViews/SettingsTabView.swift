@@ -15,6 +15,7 @@ struct SettingsTabView: View {
     @EnvironmentObject private var connectionsVM: ConnectionsViewModel
     
     @StateObject private var membershipVM = TeamMembershipCheckerViewModel()
+    @StateObject private var profileCheckVM = ProfileCompletenessViewModel()
     
     private let sections = SettingsNavigationLinks.allCases.groupedAndSorted()
 
@@ -32,7 +33,10 @@ struct SettingsTabView: View {
                     }
                 }
             }
-            .onAppear {membershipVM.refresh()}
+            .onAppear {
+                membershipVM.refresh()
+                profileCheckVM.evaluate(with: userViewModel.user)
+            }
             .onDisappear {membershipVM.stopListening()}
         }
     }
@@ -78,7 +82,40 @@ struct SettingsTabView: View {
                     }
                 }
                 .padding(.vertical)
-                NavigationLink("Profile Info", destination: UserRowView(uid: user.uid))
+                profileViewLink(user: user)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func profileViewLink(user: UserFB) -> some View {
+        Group {
+            NavigationLink {
+                if profileCheckVM.isIncomplete {
+                    ProfileEditView(isFinishingProfile: profileCheckVM.isIncomplete)
+                        .hideTabBarWhileActive("profile")
+                }else {
+                    ProfileView(uid: user.uid)
+                        .hideTabBarWhileActive("profile")
+                }
+            } label: {
+                if profileCheckVM.isIncomplete {
+                    HStack(spacing: 5) {
+                        Image(systemName: "exclamationmark.circle")
+                            .foregroundStyle(.red)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Complete profile")
+                                .font(.callout)
+                            if !profileCheckVM.missing.isEmpty {
+                                Text("Missing: " + profileCheckVM.missing.joined(separator: ", "))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }else {
+                    Text("Profile Info")
+                }
             }
         }
     }
@@ -102,7 +139,7 @@ struct SettingsTabView: View {
     ///Connections NavigationLink
     private var connections: some View {
         NavigationLink {
-            UserConnectionsView()
+            UserConnectionsView(viewingUid: nil)
                 .hideTabBarWhileActive("myLogs")
         } label: {
             let count = connectionsVM.connections.filter { $0.status == .accepted }.count
@@ -160,6 +197,13 @@ struct SettingsTabView: View {
         )
         
         notificationsViewModel.getFcmByUid(uid: uid, notification: newNotification)
+        
+        Toast.shared.present(
+            title: "Push sent",
+            symbol: "checkmark",
+            isUserInteractionEnabled: true,
+            timing: .medium
+        )
     }
 }
 

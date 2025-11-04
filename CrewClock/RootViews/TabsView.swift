@@ -10,6 +10,8 @@ import SwiftUI
 struct TabsView: View {
     @EnvironmentObject var publishedVars: PublishedVariebles
     @EnvironmentObject var searchUserViewModel: SearchUserViewModel
+    @EnvironmentObject private var userViewModel: UserViewModel
+    @StateObject private var profileCheckVM = ProfileCompletenessViewModel()
     
     @Environment(\.isSearching) var isSearching
     
@@ -65,6 +67,7 @@ struct TabsView: View {
             }
             Tab("Settings", systemImage: "gearshape", value: 2) {
                 SettingsTabView()
+                    .badge(profileCheckVM.isIncomplete ? "!" : nil)
                     .toolbarVisibility(publishedVars.navLink.isEmpty ? .visible : .hidden, for: .tabBar)
             }
             Tab(value: 3, role: .search) {
@@ -79,6 +82,10 @@ struct TabsView: View {
                         print("searchUserViewModel.foundUIDs: -- ", searchUserViewModel.foundUIDs)
                     }
             }
+        }
+        .onAppear { profileCheckVM.evaluate(with: userViewModel.user) }
+        .onChange(of: userViewModel.user?.uid) { _, _ in
+            profileCheckVM.evaluate(with: userViewModel.user)
         }
         .tabViewBottomAccessory {
             if publishedVars.navLink.isEmpty {
@@ -103,7 +110,7 @@ struct TabsView: View {
                     ClockTabView()
                 case .tasks:
 //                    TasksView()
-                    Text("rtgh")
+                    Text("no tasks -_-")
                 case .settings:
                     SettingsTabView()
                 }

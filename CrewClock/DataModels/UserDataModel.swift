@@ -35,6 +35,13 @@ struct UserFB: Identifiable {
     var currentSpreadsheetId: String
     var connections: [String]
     var currentLog: LogModel?
+    
+    var description: String
+    var city: String
+    var country: String
+    var tags: [String]
+    var languages: [String]
+
 
     init(data: [String: Any], documentId: String) {
         self.uid = documentId
@@ -44,6 +51,12 @@ struct UserFB: Identifiable {
         self.working = data["working"] as? Bool ?? false
         self.currentSpreadsheetId = data["currentSpreadsheetId"] as? String ?? ""
         self.connections = data["connections"] as? [String] ?? []
+        
+        self.description = data["description"] as? String ?? ""
+        self.city = data["city"] as? String ?? ""
+        self.country = data["country"] as? String ?? ""
+        self.tags = data["tags"] as? [String] ?? []
+        self.languages = data["languages"] as? [String] ?? []
         
         if let logData = data["currentLog"] as? [String: Any] {
             self.currentLog = LogModel(

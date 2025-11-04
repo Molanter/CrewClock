@@ -12,13 +12,14 @@ import FirebaseAuth
 class ConnectionsViewModel: ObservableObject {
     @Published var user: UserFB?
     @Published var sentInvites: Set<String> = []
-    @Published var notificationUID: String? = nil
+    @Published var notificationUID: String?
     @Published var connections: [Connection] = []
-    
-    private var db = Firestore.firestore()
-    private var auth = Auth.auth()
+
+    private let db = Firestore.firestore()
+    private let auth = Auth.auth()
     private let notificationsVM = NotificationsViewModel()
-    
+
+    // MARK: Helpers
     private func connectionId(_ a: String, _ b: String) -> String {
         let pair = [a, b].sorted()
         return "\(pair[0])_\(pair[1])"
@@ -27,56 +28,40 @@ class ConnectionsViewModel: ObservableObject {
     private func connectionRef(_ a: String, _ b: String) -> DocumentReference {
         db.collection("connections").document(connectionId(a, b))
     }
-    
-    
-    // MARK: One-time fetch of ALL relationships for current user
-    func fetchAllConnections() {
-        guard let me = Auth.auth().currentUser?.uid else {
-            self.connections = []
-            return
+
+    private func mapConnections(_ snap: QuerySnapshot?) -> [Connection] {
+        (snap?.documents ?? []).map { doc in
+            let d = doc.data()
+            return Connection(
+                id: doc.documentID,
+                uids: d["uids"] as? [String] ?? [],
+                initiator: d["initiator"] as? String ?? "",
+                status: ConnectionStatus(rawValue: d["status"] as? String ?? "") ?? .pending,
+                createdAt: d["createdAt"] as? Timestamp,
+                updatedAt: d["updatedAt"] as? Timestamp,
+                lastActionBy: d["lastActionBy"] as? String
+            )
         }
-        
-        let baseQuery = db.collection("connections")
-            .whereField("uids", arrayContains: me)
-        
+    }
+
+    // MARK: One-time fetch of ALL relationships for arbitrary user
+    func fetchAllConnections(for uid: String) {
+        let baseQuery = db.collection("connections").whereField("uids", arrayContains: uid)
         let orderedQuery = baseQuery.order(by: "updatedAt", descending: true)
-        
-        // Helper to map a snapshot → [Connection]
-        func mapConnections(_ snap: QuerySnapshot?) -> [Connection] {
-            return (snap?.documents ?? []).map { doc in
-                let d = doc.data()
-                return Connection(
-                    id: doc.documentID,
-                    uids: d["uids"] as? [String] ?? [],
-                    initiator: d["initiator"] as? String ?? "",
-                    status: ConnectionStatus(rawValue: d["status"] as? String ?? "") ?? .pending,
-                    createdAt: d["createdAt"] as? Timestamp,
-                    updatedAt: d["updatedAt"] as? Timestamp,
-                    lastActionBy: d["lastActionBy"] as? String
-                )
-            }
-        }
-        
-        // Try the indexed query first
+
         orderedQuery.getDocuments { [weak self] snap, err in
-            guard let self = self else { return }
-            
+            guard let self else { return }
+
             if let err = err as NSError? {
-                // Missing index = failedPrecondition; fall back to un-ordered + in-memory sort
-                let isMissingIndex =
-                err.domain == "FIRFirestoreErrorDomain" &&
-                err.code == FirestoreErrorCode.failedPrecondition.rawValue
-                
-                if isMissingIndex {
-                    print("ℹ️ fetchAllConnections: missing index; falling back to client-side sort. Create the composite index for (uids ARRAY_CONTAINS, updatedAt DESC) to enable server-side ordering.")
+                let missingIndex =
+                    err.domain == "FIRFirestoreErrorDomain" &&
+                    err.code == FirestoreErrorCode.failedPrecondition.rawValue
+                if missingIndex {
+                    // Fallback without order. Sort on client.
                     baseQuery.getDocuments { [weak self] snap2, err2 in
-                        guard let self = self else { return }
-                        if let err2 = err2 {
-                            print("❌ fetchAllConnections fallback error: \(err2.localizedDescription)")
-                            self.connections = []
-                            return
-                        }
-                        var conns = mapConnections(snap2)
+                        guard let self else { return }
+                        if let err2 { print("❌ fetchAllConnections fallback: \(err2.localizedDescription)"); self.connections = []; return }
+                        var conns = self.mapConnections(snap2)
                         conns.sort {
                             ($0.updatedAt?.dateValue() ?? .distantPast) >
                             ($1.updatedAt?.dateValue() ?? .distantPast)
@@ -90,67 +75,54 @@ class ConnectionsViewModel: ObservableObject {
                     return
                 }
             }
-            
-            // Success (indexed path)
-            let conns = mapConnections(snap)
+
+            let conns = self.mapConnections(snap)
             DispatchQueue.main.async { self.connections = conns }
         }
     }
-    
-    // MARK: Realtime listener for ALL connections for current user
-    // Returns a ListenerRegistration so you can stop listening when needed.
+
+    /// Convenience: current signed-in user
+    func fetchAllConnections() {
+        guard let me = auth.currentUser?.uid else { self.connections = []; return }
+        fetchAllConnections(for: me)
+    }
+
+    // MARK: Realtime listener for arbitrary user
     @discardableResult
-    func listenAllConnections(onChange: @escaping ([Connection]) -> Void) -> ListenerRegistration? {
-        guard let me = Auth.auth().currentUser?.uid else {
-            onChange([])
-            return nil
-        }
+    func listenAllConnections(for uid: String, onChange: @escaping ([Connection]) -> Void) -> ListenerRegistration {
         let query = db.collection("connections")
-            .whereField("uids", arrayContains: me)
+            .whereField("uids", arrayContains: uid)
             .order(by: "updatedAt", descending: true)
 
-        let listener = query.addSnapshotListener { snap, err in
-            if let err = err {
-                print("❌ listenAllConnections error: \(err.localizedDescription)")
-                onChange([])
-                return
-            }
-            let rels: [Connection] = (snap?.documents ?? []).map { doc in
-                let d = doc.data()
-                return Connection(
-                    id: doc.documentID,
-                    uids: d["uids"] as? [String] ?? [],
-                    initiator: d["initiator"] as? String ?? "",
-                    status: ConnectionStatus(rawValue: d["status"] as? String ?? "") ?? .pending,
-                    createdAt: d["createdAt"] as? Timestamp,
-                    updatedAt: d["updatedAt"] as? Timestamp,
-                    lastActionBy: d["lastActionBy"] as? String
-                )
-            }
-            onChange(rels)
+        let listener = query.addSnapshotListener { [weak self] snap, err in
+            guard let self else { return }
+            if let err { print("❌ listenAllConnections error: \(err.localizedDescription)"); onChange([]); return }
+            onChange(self.mapConnections(snap))
         }
         return listener
     }
-    
-    //MARK: Connect with person
+
+    /// Convenience: realtime for current user
+    @discardableResult
+    func listenAllConnections(onChange: @escaping ([Connection]) -> Void) -> ListenerRegistration? {
+        guard let me = auth.currentUser?.uid else { onChange([]); return nil }
+        return listenAllConnections(for: me, onChange: onChange)
+    }
+
+    // MARK: Connect with person (current user context)
     func connectWithPerson(_ otherUid: String) {
-        guard let me = Auth.auth().currentUser?.uid else { return }
+        guard let me = auth.currentUser?.uid else { return }
         sentInvites.insert(otherUid)
-        self.notificationUID = otherUid
+        notificationUID = otherUid
 
         let ref = connectionRef(me, otherUid)
         let now = Timestamp(date: Date())
 
-        // Idempotent upsert: create if missing, or refresh a declined/removed back to pending
-        db.runTransaction({ txn, errorPointer in
+        db.runTransaction({ txn, ep in
             do {
                 let snap = try txn.getDocument(ref)
                 if snap.exists, let data = snap.data(), let cur = data["status"] as? String {
-                    // If already accepted or blocked, do nothing (or handle re-request policy)
-                    if cur == "accepted" || cur == "blocked" {
-                        return nil
-                    }
-                    // Move to pending again if declined/removed, or keep pending
+                    if cur == "accepted" || cur == "blocked" { return nil }
                     txn.updateData([
                         "status": "pending",
                         "initiator": me,
@@ -162,53 +134,37 @@ class ConnectionsViewModel: ObservableObject {
                         "uids": [me, otherUid],
                         "initiator": me,
                         "status": "pending",
-                        "roles": [:],                 // optional
+                        "roles": [:],
                         "createdAt": now,
                         "updatedAt": now,
                         "lastActionBy": me
                     ], forDocument: ref)
                 }
-            } catch let error as NSError {
-                errorPointer?.pointee = error
+            } catch let e as NSError {
+                ep?.pointee = e
                 return nil
             }
             return nil
-        }) { _, error in
-            if let error = error {
-                print("❌ Send request failed: \(error.localizedDescription)")
-                return
-            }
-            print("Looks like everything is good ✅")
-            // Notify the other user
-            let newNotification = NotificationModel(
+        }) { [weak self] _, error in
+            guard let self else { return }
+            if let error { print("❌ Send request failed: \(error.localizedDescription)"); return }
+            let n = NotificationModel(
                 title: "Do you want to connect?",
-                message: "\(self.user?.name ?? self.auth.currentUser?.displayName ?? "Someone") sent a connection invite. Respond to it in the app.",
+                message: "\(self.user?.name ?? self.auth.currentUser?.displayName ?? "Someone") sent a connection invite. Respond in the app.",
                 timestamp: Date(),
                 recipientUID: [otherUid],
                 fromUID: self.user?.uid ?? self.auth.currentUser?.uid ?? "",
                 isRead: false,
                 type: .connectInvite,
-                relatedId: self.connectionId(me, otherUid) // 👈 point to the connection
+                relatedId: self.connectionId(me, otherUid)
             )
-            self.notificationsVM.getFcmByUid(uid: otherUid, notification: newNotification)
+            self.notificationsVM.getFcmByUid(uid: otherUid, notification: n)
         }
     }
-    
-    func debugConnection(with otherUid: String) {
-        guard let me = Auth.auth().currentUser?.uid else { return }
-        let ref = connectionRef(me, otherUid)
-        ref.getDocument { snap, err in
-            let data = snap?.data() ?? [:]
-            let status = data["status"] as? String ?? "nil"
-            let initiator = data["initiator"] as? String ?? "nil"
-            let uids = data["uids"] as? [String] ?? []
-            print("🔎 rel(uids=\(uids)) status=\(status) initiator=\(initiator) me=\(me) other=\(otherUid)")
-        }
-    }
-        
-    // MARK: Accept connection (non-initiator accepts pending)
+
+    // MARK: Accept (current user must be the non-initiator)
     func acceptConnection(from otherUid: String, notificationId: String? = nil) {
-        guard let me = Auth.auth().currentUser?.uid else { return }
+        guard let me = auth.currentUser?.uid else { return }
         let ref = connectionRef(me, otherUid)
         let now = Timestamp(date: Date())
 
@@ -220,16 +176,10 @@ class ConnectionsViewModel: ObservableObject {
                                           userInfo: [NSLocalizedDescriptionKey: "Connection not found"])
                     return nil
                 }
-
-                let status    = data["status"] as? String ?? ""
+                let status = data["status"] as? String ?? ""
                 let initiator = data["initiator"] as? String ?? ""
 
-                // If it's already accepted → idempotent success (no error)
-                if status == "accepted" {
-                    return ["initiator": initiator] as NSDictionary
-                }
-
-                // Only the non-initiator can accept, and only when pending
+                if status == "accepted" { return ["initiator": initiator] as NSDictionary }
                 guard status == "pending" else {
                     ep?.pointee = NSError(domain: "Connection", code: 409,
                                           userInfo: [NSLocalizedDescriptionKey: "Not pending"])
@@ -237,7 +187,7 @@ class ConnectionsViewModel: ObservableObject {
                 }
                 guard initiator != me else {
                     ep?.pointee = NSError(domain: "Connection", code: 409,
-                                          userInfo: [NSLocalizedDescriptionKey: "You created this invite—only the other user can accept"])
+                                          userInfo: [NSLocalizedDescriptionKey: "Initiator cannot accept"])
                     return nil
                 }
 
@@ -252,13 +202,9 @@ class ConnectionsViewModel: ObservableObject {
                 ep?.pointee = e
                 return nil
             }
-        }) { result, error in
-            if let error = error {
-                print("❌ Accept failed: \(error.localizedDescription)")
-                return
-            }else {
-                print("✅ No error here")
-            }
+        }) { [weak self] result, error in
+            guard let self else { return }
+            if let error { print("❌ Accept failed: \(error.localizedDescription)"); return }
 
             if let notificationId {
                 self.notificationsVM.updateNotificationStatus(
@@ -284,9 +230,9 @@ class ConnectionsViewModel: ObservableObject {
         }
     }
 
-    // MARK: Cancel a pending invite (initiator only)
+    // MARK: Cancel pending (initiator only)
     func cancelInvite(to otherUid: String) {
-        guard let me = Auth.auth().currentUser?.uid else { return }
+        guard let me = auth.currentUser?.uid else { return }
         let ref = connectionRef(me, otherUid)
         let now = Timestamp(date: Date())
 
@@ -298,17 +244,17 @@ class ConnectionsViewModel: ObservableObject {
                                           userInfo: [NSLocalizedDescriptionKey: "Connection not found"])
                     return nil
                 }
-                let status    = data["status"] as? String ?? ""
+                let status = data["status"] as? String ?? ""
                 let initiator = data["initiator"] as? String ?? ""
 
                 guard status == "pending", initiator == me else {
                     ep?.pointee = NSError(domain: "Connection", code: 409,
-                                          userInfo: [NSLocalizedDescriptionKey: "Only the initiator can cancel a pending invite"])
+                                          userInfo: [NSLocalizedDescriptionKey: "Only initiator can cancel pending"])
                     return nil
                 }
 
                 txn.updateData([
-                    "status": "removed",           // or "cancelled" if you prefer a distinct state
+                    "status": "removed",
                     "updatedAt": now,
                     "lastActionBy": me
                 ], forDocument: ref)
@@ -318,21 +264,17 @@ class ConnectionsViewModel: ObservableObject {
             }
             return nil
         }) { _, error in
-            if let error = error {
-                print("❌ Cancel failed: \(error.localizedDescription)")
-            } else {
-                print("✅ Invite cancelled")
-            }
+            if let error { print("❌ Cancel failed: \(error.localizedDescription)") }
         }
     }
 
-    //MARK: Decline connection
+    // MARK: Decline pending (non-initiator)
     func declineConnection(from requesterUid: String) {
-        guard let me = Auth.auth().currentUser?.uid else { return }
+        guard let me = auth.currentUser?.uid else { return }
         let ref = connectionRef(me, requesterUid)
         let now = Timestamp(date: Date())
 
-        db.runTransaction({ txn, errorPointer in
+        db.runTransaction({ txn, ep in
             do {
                 let snap = try txn.getDocument(ref)
                 guard snap.exists,
@@ -340,50 +282,44 @@ class ConnectionsViewModel: ObservableObject {
                       let status = data["status"] as? String,
                       let initiator = data["initiator"] as? String
                 else {
-                    errorPointer?.pointee = NSError(domain: "Connection", code: 404)
-                    return nil
+                    ep?.pointee = NSError(domain: "Connection", code: 404); return nil
                 }
-
                 guard status == "pending", initiator == requesterUid else {
-                    errorPointer?.pointee = NSError(domain: "Connection", code: 409)
-                    return nil
+                    ep?.pointee = NSError(domain: "Connection", code: 409); return nil
                 }
-
                 txn.updateData([
                     "status": "declined",
                     "updatedAt": now,
                     "lastActionBy": me
                 ], forDocument: ref)
-            } catch let error as NSError {
-                errorPointer?.pointee = error
+            } catch let e as NSError {
+                ep?.pointee = e
                 return nil
             }
             return nil
         }) { _, error in
-            if let error = error {
-                print("❌ Decline failed: \(error.localizedDescription)")
-                return
-            }
-            // (Optional) notify/requester, or stay silent
+            if let error { print("❌ Decline failed: \(error.localizedDescription)") }
         }
     }
-    
-    //MARK: Remove connection
+
+    // MARK: Remove existing connection
     func removeConnection(_ otherUid: String) {
-        guard let me = Auth.auth().currentUser?.uid else { return }
+        guard let me = auth.currentUser?.uid else { return }
         let ref = connectionRef(me, otherUid)
         let now = Timestamp(date: Date())
 
-        db.runTransaction({ txn, errorPointer in
+        db.runTransaction({ txn, ep in
             do {
                 let snap = try txn.getDocument(ref)
                 guard snap.exists else {
-                    errorPointer?.pointee = NSError(domain: "Connection", code: 404, userInfo: [NSLocalizedDescriptionKey: "Connection not found"])
+                    ep?.pointee = NSError(domain: "Connection", code: 404,
+                                          userInfo: [NSLocalizedDescriptionKey: "Connection not found"])
                     return nil
                 }
-                let currentStatus = snap.data()?["status"] as? String ?? ""
-                guard currentStatus == "accepted" else {
-                    errorPointer?.pointee = NSError(domain: "Connection", code: 409, userInfo: [NSLocalizedDescriptionKey: "Not connected"])
+                let cur = snap.data()?["status"] as? String ?? ""
+                guard cur == "accepted" else {
+                    ep?.pointee = NSError(domain: "Connection", code: 409,
+                                          userInfo: [NSLocalizedDescriptionKey: "Not connected"])
                     return nil
                 }
                 txn.updateData([
@@ -391,17 +327,13 @@ class ConnectionsViewModel: ObservableObject {
                     "updatedAt": now,
                     "lastActionBy": me
                 ], forDocument: ref)
-            } catch let error as NSError {
-                errorPointer?.pointee = error
+            } catch let e as NSError {
+                ep?.pointee = e
                 return nil
             }
             return nil
         }) { _, error in
-            if let error = error {
-                print("❌ Remove connection failed: \(error.localizedDescription)")
-            } else {
-                print("✅ Connection marked as removed")
-            }
+            if let error { print("❌ Remove connection failed: \(error.localizedDescription)") }
         }
     }
 }

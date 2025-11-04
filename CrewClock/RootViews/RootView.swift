@@ -12,6 +12,9 @@ import FirebaseAuth
 private enum SessionPhase { case signedIn, tearingDown, signedOut }
 
 struct RootView: View {
+    @StateObject private var profileCheckVM = ProfileCompletenessViewModel()
+    @State private var showProfileGate = false
+
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject var logsVM: LogsViewModel
     @EnvironmentObject var projectsVM: ProjectViewModel
@@ -50,6 +53,7 @@ struct RootView: View {
                 }
                 userVM.fetchUser()
                 connectionsVM.fetchAllConnections()
+                profileCheckVM.evaluate(with: userVM.user)
             }
         }
         // Drive phase by notifications, not by @Published flips
@@ -59,6 +63,10 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .sessionWillEnd)) { _ in
             withTransaction(Transaction(animation: nil)) { phase = .tearingDown }
         }
+        .onReceive(userVM.$user.dropFirst()) { newUser in
+            profileCheckVM.evaluate(with: newUser)
+            showProfileGate = profileCheckVM.isIncomplete
+        }
         .onReceive(NotificationCenter.default.publisher(for: .authDidSignOut)) { _ in
             // no-op; we already moved to .signedOut after teardown
         }
@@ -67,6 +75,16 @@ struct RootView: View {
         .onShake { deviceShaked.toggle() }
         .sheet(isPresented: $deviceShaked) {
             ReportBugView().presentationDetents([.medium, .large])
+        }
+        .fullScreenCover(isPresented: $showProfileGate) {
+            NavigationStack {
+                ProfileEditView(isFinishingProfile: true)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Close") { showProfileGate = false }
+                        }
+                    }
+            }
         }
     }
 }

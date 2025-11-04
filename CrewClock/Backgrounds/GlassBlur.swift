@@ -14,7 +14,7 @@ struct GlassBlur: View {
     var body: some View {
         TransparentBlurView(removeAllFilters: removeAllFilters)
             .blur(radius: CGFloat(blur), opaque: true)
-            .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+            .background(colorScheme == .light ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
     }
 }
 

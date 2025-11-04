@@ -53,6 +53,7 @@ struct NotificationsView: View {
             }
             footerNote
         }
+        .refreshable { notificationsViewModel.fetchNotifications(completion: { array in notificationsViewModel.notifications = array }) }
     }
     
     private var footerNote: some View {
@@ -89,6 +90,7 @@ struct NotificationsView: View {
     NotificationsView()
 }
 
+// MockData for Preview
 
 //notifications: [
 //    NotificationFB(

@@ -154,6 +154,7 @@ struct MyTeamsView: View {
     private func row(_ team: TeamFB) -> some View {
         NavigationLink {
             ManageTeamView(team: team)
+                .hideTabBarWhileActive("active")
         } label: {
             HStack {
                 imageRowGroup(team)

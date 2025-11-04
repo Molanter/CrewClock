@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct SignInButtonView: View {
+    @Environment(\.colorScheme) var colorScheme
+
     let text: String
     let image: String
     let colored: Bool
@@ -35,10 +37,9 @@ struct SignInButtonView: View {
                     RoundedRectangle(cornerRadius: K.UI.cornerRadius)
                         .fill(K.Colors.accent)
                 } else {
-//                    TransparentBlurView(removeAllFilters: false)
-//                        .blur(radius: 9, opaque: true)
-//                        .background(.white.opacity(0.05))
-                    GlassBlur(removeAllFilters: true)
+                    TransparentBlurView(removeAllFilters: false)
+                        .blur(radius: 5, opaque: true)
+                        .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
                         .cornerRadius(K.UI.cornerRadius)
                 }
             }
