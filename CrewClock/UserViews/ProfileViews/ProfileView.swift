@@ -11,6 +11,8 @@ import FirebaseAuth
 struct ProfileView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject private var connectionsVM: ConnectionsViewModel
+    @EnvironmentObject private var projectsVM: ProjectViewModel
+    @EnvironmentObject private var userVM: UserViewModel
 
     /// If nil → load current user’s profile
     let uid: String?
@@ -202,10 +204,11 @@ struct ProfileView: View {
                         Text("Connections")
                     }
                 } label: {
-                    ProfileStatsView(number: 100, text: "Connections")
+                    ProfileStatsView(number: userVM.user?.connections.count ?? 0, text: "Connections")
+                        .hideTabBarWhileActive("profile")
                 }
-                ProfileStatsView(number: 35, text: "Projects")
-                ProfileStatsView(number: 30, text: "Clients")
+                ProfileStatsView(number: projectsVM.projects.count, text: "Projects")
+//                ProfileStatsView(number: 30, text: "Clients")
             }
             .buttonStyle(.plain)
             .tint(.primary)

@@ -15,6 +15,7 @@ struct SettingsTabView: View {
     @EnvironmentObject private var connectionsVM: ConnectionsViewModel
     
     @StateObject private var membershipVM = TeamMembershipCheckerViewModel()
+    @StateObject private var profileCheckVM = ProfileCompletenessViewModel()
     
     private let sections = SettingsNavigationLinks.allCases.groupedAndSorted()
 
@@ -32,7 +33,10 @@ struct SettingsTabView: View {
                     }
                 }
             }
-            .onAppear {membershipVM.refresh()}
+            .onAppear {
+                membershipVM.refresh()
+                profileCheckVM.evaluate(with: userViewModel.user)
+            }
             .onDisappear {membershipVM.stopListening()}
         }
     }
@@ -78,7 +82,35 @@ struct SettingsTabView: View {
                     }
                 }
                 .padding(.vertical)
-                NavigationLink("Profile Info", destination: ProfileView(uid: user.uid))
+                profileViewLink(user: user)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func profileViewLink(user: UserFB) -> some View {
+        Group {
+            NavigationLink {
+                ProfileEditView(isFinishingProfile: profileCheckVM.isIncomplete)
+                    .hideTabBarWhileActive("profile")
+            } label: {
+                if profileCheckVM.isIncomplete {
+                    HStack(spacing: 5) {
+                        Image(systemName: "exclamationmark.circle")
+                            .foregroundStyle(.red)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Complete profile")
+                                .font(.callout)
+                            if !profileCheckVM.missing.isEmpty {
+                                Text("Missing: " + profileCheckVM.missing.joined(separator: ", "))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }else {
+                    Text("Profile Info")
+                }
             }
         }
     }
