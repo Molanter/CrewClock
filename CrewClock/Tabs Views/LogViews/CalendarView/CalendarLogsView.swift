@@ -28,7 +28,7 @@ struct CalendarLogsView: View {
     }
 
     private var page: some View {
-        ZStack(alignment: .top) {
+        VStack {
 
             // Header uses shared pager selection
             CalendarHeader(
@@ -42,7 +42,6 @@ struct CalendarLogsView: View {
             logsPager
                 .background(backGroundColor())
                 .overlay { OutsideGlassOverlay(radius: K.UI.cornerRadius) }
-                .offset(y: 104)
         }
         .background(Color(uiColor: .secondarySystemBackground))
         .onAppear {
@@ -68,23 +67,23 @@ struct CalendarLogsView: View {
         }
     }
 
+    
     // MARK: - Sliding Logs Pager
 
     private var logsPager: some View {
-        GeometryReader { proxy in
-            TabView(selection: $pageIndex) {
-                ForEach(0..<3, id: \.self) { idx in
-                    let offset = idx - 1
-                    let weekBaseDate = Calendar.current.date(byAdding: .weekOfYear, value: offset, to: currentDate) ?? currentDate
-                    let weekDays = Date.currentWeek(from: weekBaseDate)
-
+        GeometryReader {
+            let size = $0.size
+            
+                    
                     ScrollView(.vertical) {
+                        /// Going to use the native pinned section headers to create the header effect (Saw in the intro video!)
                         LazyVStack(spacing: 15, pinnedViews: [.sectionHeaders]) {
-                            ForEach(weekDays) { day in
+                            ForEach(currentWeek) { day in
                                 let date = day.date
-                                let isLast = weekDays.last?.id == day.id
-
+                                let isLast = currentWeek.last?.id == day.id
+                                
                                 Section {
+                                    /// Use this date value to extract tasks from your database, such as SwiftData, CoreData, etc.
                                     VStack(alignment: .leading, spacing: 15) {
                                         tasks(for: date)
                                     }
@@ -93,7 +92,7 @@ struct CalendarLogsView: View {
                                     .padding(.top, -70)
                                     .padding(.bottom, 10)
                                     .frame(
-                                        minHeight: isLast ? proxy.size.height - 110 : nil,
+                                        minHeight: isLast ? size.height - 110 : nil,
                                         alignment: .top
                                     )
                                 } header: {
@@ -110,30 +109,20 @@ struct CalendarLogsView: View {
                         .scrollTargetLayout()
                     }
                     .contentMargins(.all, 20, for: .scrollContent)
+                    /// Only Adding, Padding vertically for the indicators
                     .contentMargins(.vertical, 20, for: .scrollIndicators)
+                    /// Using Scroll Position to identify the current active section
                     .scrollPosition(id: .init(get: {
-                        weekDays.first(where: { $0.date.isSame(selectedDate) })?.id
+                        return currentWeek.first(where: { $0.date.isSame(selectedDate) })?.id
                     }, set: { newValue in
-                        selectedDate = weekDays.first(where: { $0.id == newValue })?.date
+                        /// Converting id into selected date
+                        selectedDate = currentWeek.first(where: { $0.id == newValue })?.date
                     }), anchor: .top)
+                    /// Undoing the negative padding effect
                     .safeAreaPadding(.bottom, 70)
                     .padding(.bottom, -70)
-                    .frame(width: proxy.size.width)
-                    .tag(idx)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.interactiveSpring(), value: pageIndex)
         }
-        .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: K.UI.cornerRadius,
-                bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0,
-                topTrailingRadius: K.UI.cornerRadius,
-                style: .continuous
-            )
-        )
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 30, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 30, style: .continuous))
         .ignoresSafeArea(.all, edges: .bottom)
     }
 

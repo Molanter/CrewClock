@@ -24,6 +24,7 @@ struct LogDetailView: View {
             }
         }
         .onAppear { if vm.log == nil { vm.fetch(logId: logId) } }
+        .hideTabBarWhileActive("log")
     }
     
     @ViewBuilder
