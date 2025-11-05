@@ -74,6 +74,21 @@ struct ClockTabView: View {
 enum WorkSection: String, CaseIterable, Identifiable {
     case tasks = "Tasks"
     case projects = "Projects"
+    
+    var title: String {
+        switch self {
+        case .tasks: return "Tasks"
+        case .projects: return "Projects"
+        }
+    }
+    
+    var systemImage: String {
+        switch self {
+        case .tasks: return "checklist"
+        case .projects: return "folder"
+        }
+    }
+    
     var id: String { rawValue }
 }
 
@@ -92,22 +107,27 @@ struct WorkHubView: View {
             .ignoresSafeArea(edges: []) // keep default safe-area behavior
             .navigationTitle(section.rawValue)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    toolbarSegmentPicker
+                if #available(iOS 26.0, *) {
+                    ToolbarItem(placement: .principal) {
+                        toolbarSegmentPicker
+                            .fixedSize()
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .principal) {
+                        toolbarSegmentPicker
+                            .fixedSize()
+                    }
                 }
             }
         }
     }
     
     private var toolbarSegmentPicker: some View {
-        SegmentedControlPicker(
-            selection: $section,
-            items: WorkSection.allCases,
-            selectedTint: UIColor(K.Colors.accent),
-            selectedText: .white,
-            normalText: UIColor(K.Colors.accent)
-        )
-        .frame(height: 34)
+        let items: [IconTextSegmentedPicker<WorkSection>.Item] = WorkSection.allCases.map { section in
+            .init(id: section, title: section.title, systemImage: section.systemImage)
+        }
+        return IconTextSegmentedPicker(selection: $section, items: items)
     }
 }
 
@@ -115,3 +135,4 @@ struct WorkHubView: View {
 extension WorkSection: CustomStringConvertible {
     var description: String { rawValue }
 }
+
