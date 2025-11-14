@@ -20,11 +20,17 @@ struct AddTaskView: View {
     @State private var notes: String = ""
     @State private var dueDate: Date = Date()
     @State private var hasDueDate: Bool = false
+    @State private var hasTimeRange: Bool = false
+    @State private var startTime: Date = Calendar.current.date(bySettingHour: 8, minute: 0, second: 0, of: Date()) ?? Date()
+    @State private var endTime: Date = Calendar.current.date(bySettingHour: 16, minute: 00, second: 0, of: Date()) ?? Date()
     @State private var priority: String = "Medium"
     @State private var projectName: String = ""
     @State private var usersArray: [String] = []
     @State private var didPrefill = false
     @State private var selectedEntities: [String: String] = [:] // id -> "user" | "team"
+    // Checklist
+    @State private var newChecklistItem: String = ""
+    @State private var checklist: [ChecklistItem] = []
     
     let priorities = ["Low", "Medium", "High"]
     
@@ -38,6 +44,10 @@ struct AddTaskView: View {
                     selectedEntities: $selectedEntities,
                     showAddedCrewList: true
                 )
+                
+                checklistSection
+                
+                scheduleRow
                 
                 dueDateRow
                 
@@ -71,6 +81,70 @@ struct AddTaskView: View {
         }
     }
     
+    private var checklistSection: some View {
+        Section(header: Text("Checklist")) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    TextField("Add checklist item", text: $newChecklistItem)
+                        .onSubmit { addChecklistRow() }
+                    Button {
+                        addChecklistRow()
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                }
+                checklistList
+            }
+        }
+    }
+
+    private var checklistList: some View {
+        ForEach(checklist) { item in
+            HStack {
+                Button {
+                    toggleChecklistItem(id: item.id)
+                } label: {
+                    Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(item.isChecked ? .green : .secondary)
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+
+                Text(item.text).foregroundColor(.primary)
+                    .strikethrough(item.isChecked, color: .primary.opacity(0.5))
+                    .foregroundStyle(item.isChecked ? .secondary : .primary)
+
+                Spacer()
+
+                Image(systemName: "minus.circle.fill")
+                    .symbolRenderingMode(.multicolor)
+                    .foregroundColor(.red)
+                    .onTapGesture { removeChecklistItem(id: item.id) }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+    
+    private var scheduleRow: some View {
+        Section(header: Text("Schedule")) {
+            Toggle("Assign time range", isOn: $hasTimeRange.animation())
+            if hasTimeRange {
+                VStack(alignment: .leading, spacing: 8) {
+                    DatePicker("Start", selection: $startTime, displayedComponents: [.date, .hourAndMinute])
+                    DatePicker("End", selection: $endTime, in: startTime..., displayedComponents: [.date, .hourAndMinute])
+                    if selectedEntities.isEmpty {
+                        Text("Select at least one assignee above to schedule.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
     private var priorityRow: some View {
         Section(header: Text("Priority")) {
             Picker("Priority", selection: $priority) {
@@ -107,12 +181,29 @@ struct AddTaskView: View {
                 }
                 dismiss()
             }
-            .disabled(title.isEmpty)
+            .disabled(title.isEmpty || (hasTimeRange && endTime <= startTime))
         }
     }
     
     
     //MARK: - Functions
+    private func addChecklistRow() {
+        let trimmed = newChecklistItem.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        checklist.append(ChecklistItem(text: trimmed))
+        newChecklistItem = ""
+    }
+    
+    private func removeChecklistItem(id: UUID) {
+        checklist.removeAll { $0.id == id }
+    }
+    
+    private func toggleChecklistItem(id: UUID) {
+        if let idx = checklist.firstIndex(where: { $0.id == id }) {
+            checklist[idx].isChecked.toggle()
+        }
+    }
+    
     private func saveTask() {
         let priorityValue: Int
         switch priority {
@@ -134,6 +225,13 @@ struct AddTaskView: View {
         if hasDueDate { data["dueAt"] = Timestamp(date: dueDate) }
         if !projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             data["projectId"] = projectName
+        }
+        if !checklist.isEmpty {
+            data["checklist"] = checklist.map { ["id": $0.id.uuidString, "text": $0.text, "isChecked": $0.isChecked] }
+        }
+        if hasTimeRange {
+            data["scheduledStartAt"] = Timestamp(date: startTime)
+            data["scheduledEndAt"] = Timestamp(date: endTime)
         }
         Task {
             do {
@@ -167,6 +265,35 @@ struct AddTaskView: View {
         default: priority = "Medium"
         }
         projectName = t.projectId ?? ""
+        // Optional prefill: read checklist array from Firestore if present
+        if let id = t.id {
+            Task {
+                do {
+                    let snap = try await TaskModel.collection.document(id).getDocument()
+                    if let arr = snap.data()?["checklist"] as? [[String: Any]] {
+                        let items = arr.compactMap { dict -> ChecklistItem? in
+                            guard let idStr = dict["id"] as? String,
+                                  let text = dict["text"] as? String,
+                                  let uuid = UUID(uuidString: idStr) else { return nil }
+                            let checked = dict["isChecked"] as? Bool ?? false
+                            return ChecklistItem(id: uuid, text: text, isChecked: checked)
+                        }
+                        await MainActor.run {
+                            self.checklist = items
+                        }
+                    }
+                } catch {
+                    print("Checklist prefill error: \(error)")
+                }
+            }
+        }
+        if let start = t.scheduledStartAt?.dateValue(), let end = t.scheduledEndAt?.dateValue() {
+            hasTimeRange = true
+            startTime = start
+            endTime = end
+        } else {
+            hasTimeRange = false
+        }
     }
     
     private func updateTask() {
@@ -189,11 +316,17 @@ struct AddTaskView: View {
                 edited.assigneeUIDs = selectedEntities.isEmpty ? nil : selectedEntities
                 edited.projectId = trimmedProject.isEmpty ? nil : trimmedProject
                 edited.dueAt = hasDueDate ? Timestamp(date: dueDate) : nil
+                edited.scheduledStartAt = hasTimeRange ? Timestamp(date: startTime) : nil
+                edited.scheduledEndAt = hasTimeRange ? Timestamp(date: endTime) : nil
                 
                 try await tasksVM.updateTask(edited)
-                print("Task \\(edited.id ?? \"<no id>\") updated via ViewModel")
+                if let id = edited.id {
+                    let arr = checklist.map { ["id": $0.id.uuidString, "text": $0.text, "isChecked": $0.isChecked] }
+                    try await TaskModel.collection.document(id).setData(["checklist": arr], merge: true)
+                }
+                print("Task \(edited.id ?? "<no id>") updated via ViewModel")
             } catch {
-                print("Error updating task: \\(error)")
+                print("Error updating task: \(error)")
             }
         }
     }

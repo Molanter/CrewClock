@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct ChecklistItem: Identifiable, Equatable {
+struct ChecklistItem: Identifiable, Codable, Equatable {
     let id: UUID
     var text: String
     var isChecked: Bool

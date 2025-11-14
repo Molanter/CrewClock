@@ -34,8 +34,17 @@ struct NotificationsView: View {
                 onAppear()
             }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    segment
+                if #available(iOS 26.0, *) {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        segment
+                            .fixedSize()
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                }else {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        segment
+                            .fixedSize()
+                    }
                 }
             }
     }
