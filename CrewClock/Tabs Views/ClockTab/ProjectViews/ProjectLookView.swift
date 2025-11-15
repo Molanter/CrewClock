@@ -325,7 +325,6 @@ struct ProjectLookView: View {
     
 }
 
-
 //    .listRowBackground(Color.listRow.opacity(0.5).blur(radius: 0))
 
 

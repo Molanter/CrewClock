@@ -140,6 +140,38 @@ struct CalendarLogsView: View {
         selectedDate = currentWeek.first?.date
     }
 
+    // MARK: - Mixed day item
+    
+    private enum DayItem: Identifiable {
+        case log(LogFB)
+        case task(TaskFB)
+        
+        var id: String {
+            switch self {
+            case .log(let log):
+                return "log-\(log.id)"
+            case .task(let task):
+                return "task-\(task.id)"
+            }
+        }
+        
+        /// Time used for sorting within the day
+        var time: Date {
+            switch self {
+            case .log(let log):
+                // Use log.date for now
+                return log.date
+            case .task(let task):
+                // Prefer scheduled start, then due, then created/updated
+                return task.scheduledStartAt
+                    ?? task.dueAt
+                    ?? task.createdAt
+                    ?? task.updatedAt
+                    ?? .distantFuture
+            }
+        }
+    }
+
     // MARK: - Data helpers
     
     private func logsForDate(_ date: Date) -> [LogFB] {
@@ -151,36 +183,36 @@ struct CalendarLogsView: View {
     private func assignedTasks(for date: Date) -> [TaskFB] {
         myTasksVM.tasksScheduled(on: date)
     }
+    
+    private func dayItems(for date: Date) -> [DayItem] {
+        let logItems = logsForDate(date).map { DayItem.log($0) }
+        let taskItems = assignedTasks(for: date).map { DayItem.task($0) }
+        
+        return (logItems + taskItems)
+            .sorted { $0.time < $1.time }
+    }
 
     @ViewBuilder
     private func tasks(for date: Date) -> some View {
-        let logs = logsForDate(date)
-        let tasks = assignedTasks(for: date)
+        let items = dayItems(for: date)
         
-        if logs.isEmpty && tasks.isEmpty {
-            LogCalendarRow(log: K.Logs.dummyLog, isEmpty: true, selectedProject: .constant(K.Logs.dummyLog))
+        if items.isEmpty {
+            LogCalendarRow(
+                log: K.Logs.dummyLog,
+                isEmpty: true,
+                selectedProject: .constant(K.Logs.dummyLog)
+            )
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                // Logs for this day
-                if !logs.isEmpty {
-                    ForEach(logs) { log in
-                        LogCalendarRow(log: log, isEmpty: false, selectedProject: .constant(log))
-                    }
-                }
-                
-                // Tasks for this day
-                if !tasks.isEmpty {
-                    if !logs.isEmpty {
-                        Divider()
-                            .padding(.top, 4)
-                    }
-                    
-                    Text("Tasks for this day")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .padding(.bottom, 2)
-                    
-                    ForEach(tasks) { task in
+                ForEach(items) { item in
+                    switch item {
+                    case .log(let log):
+                        LogCalendarRow(
+                            log: log,
+                            isEmpty: false,
+                            selectedProject: .constant(log)
+                        )
+                    case .task(let task):
                         TaskCalendarRow(task: task)
                     }
                 }
@@ -195,75 +227,7 @@ struct CalendarLogsView: View {
     private func backGroundView() -> some View {
         ListBackground().ignoresSafeArea()
     }
-    
-    // MARK: - Task Row
-    
-    private struct TaskCalendarRow: View {
-        let task: TaskFB
         
-        var body: some View {
-            NavigationLink {
-                TaskDetailView(taskId: task.id)
-            } label: {
-                HStack(spacing: 12) {
-                    // Leading status icon in a subtle capsule
-                    ZStack {
-                        Capsule(style: .continuous)
-                            .fill(Color(.secondarySystemBackground))
-                        Image(systemName: statusIcon)
-                            .font(.subheadline)
-                    }
-                    .frame(width: 32, height: 32)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(task.title.isEmpty ? "Untitled task" : task.title)
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(1)
-                        
-                        if !task.description.isEmpty {
-                            Text(task.description)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                        }
-                        
-                        // Small status label
-                        Text(statusText)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(10)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color(.secondarySystemBackground))
-                )
-            }
-            .buttonStyle(.plain)
-        }
-        
-        private var statusInfo: (text: String, icon: String) {
-            let status = task.status.lowercased()
-            switch status {
-            case "done":
-                return ("Completed", "checkmark.circle.fill")
-            case "inprogress", "in progress":
-                return ("In progress", "clock.fill")
-            default:
-                let text = status.capitalized.isEmpty ? "Open" : status.capitalized
-                return (text, "circle.dashed")
-            }
-        }
-        
-        private var statusText: String { statusInfo.text }
-        private var statusIcon: String { statusInfo.icon }
-    }
 }
 
 #Preview {

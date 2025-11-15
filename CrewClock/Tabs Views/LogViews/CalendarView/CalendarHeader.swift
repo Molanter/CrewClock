@@ -72,9 +72,19 @@ struct CalendarHeader: View {
                                     .frame(width: 38, height: 38)
                                     .background {
                                         if isSameDate {
-                                            Circle()
-                                                .fill(K.Colors.accent)
+                                            TransparentBlurView(removeAllFilters: true)
+                                                .blur(radius: 0.5, opaque: true)
+                                                .background(K.Colors.accent.opacity(0.5))
+                                                .cornerRadius(.infinity)
+                                                .overlay {
+                                                    Circle()
+                                                        .stroke(K.Colors.accent.opacity(0.75), lineWidth: 1)
+                                                }
                                                 .matchedGeometryEffect(id: "ACTIVEDATE", in: namespace)
+
+//                                            Circle()
+//                                                .fill(K.Colors.accent)
+//                                                .matchedGeometryEffect(id: "ACTIVEDATE", in: namespace)
                                         }
                                     }
                             }

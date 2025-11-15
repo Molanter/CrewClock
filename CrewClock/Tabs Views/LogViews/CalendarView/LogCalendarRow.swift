@@ -79,18 +79,13 @@ struct LogCalendarRow: View {
                 noLog
             } else {
                 HStack(alignment: .center) {
-                    if !isEmpty {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(color)
-                            .frame(width: 4)
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        headerText
-                        if !log.comment.isEmpty {
-                            comment
-                        }
-//                        footerText
-                    }
+//                    if !isEmpty {
+//                        RoundedRectangle(cornerRadius: 1)
+//                            .fill(color)
+//                            .frame(width: 2)
+//                            .offset(x: 3)
+//                    }
+                    headerText
                 }
                 .padding(K.UI.padding)
                 .fixedSize(horizontal: false, vertical: true)
@@ -104,23 +99,29 @@ struct LogCalendarRow: View {
     }
     
     private var headerText: some View {
-        HStack(alignment: .center, spacing: 5) {
-            VStack(alignment: .leading) {
+        VStack(alignment: .leading) {
+            HStack(alignment: .center) {
                 Text(formattedTime(log.timeStarted) + " - " + formattedTime(log.timeFinished))
-                    .font(.callout)
+                    .font(.footnote)
                     .bold()
+                    .foregroundStyle(.secondary)
+                
+                Spacer()
+                
                 Text(formattedDate(log.date))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            Spacer()
+            if !log.comment.isEmpty {
+                comment
+            }
             ProjectsMenuView(selected: $selectedProject)
         }
     }
     
     private var comment: some View {
         Text(log.comment)
-            .font(.body)
+            .font(.callout.bold())
             .foregroundStyle(.primary)
     }
     
@@ -157,14 +158,22 @@ struct LogCalendarRow: View {
                 if #available(iOS 17.0, *) {
                     RoundedRectangle(cornerRadius: K.UI.cornerRadius)
                         .fill(BackgroundStyle().secondary)
-                } else {
+                }else {
                     RoundedRectangle(cornerRadius: K.UI.cornerRadius)
                         .fill(Color(uiColor: .secondarySystemBackground))
                 }
             }else {
-                RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-                    .fill(color)
-                    .opacity(0.3)
+//                RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+//                    .fill(color)
+//                    .opacity(0.2)
+                TransparentBlurView(removeAllFilters: true)
+                    .blur(radius: 0.5, opaque: true)
+                    .background(color.opacity(0.2))
+                    .cornerRadius(K.UI.cornerRadius)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: K.UI.cornerRadius)
+                            .stroke(color.opacity(0.5), lineWidth: 1)
+                    }
             }
         }
     }

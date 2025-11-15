@@ -17,7 +17,15 @@ struct TaskRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title).font(.headline)
                 HStack(spacing: 8) {
-                    if let due = task.dueAt {
+                    if let start = task.scheduledStartAt, let end = task.scheduledEndAt {
+                        Image(systemName: "calendar.badge.clock")
+                        Text(
+                            "\(start.formatted(date: .abbreviated, time: .omitted)) – \(end.formatted(date: .abbreviated, time: .omitted))"
+                        )
+                    } else if let start = task.scheduledStartAt {
+                        Image(systemName: "calendar.badge.clock")
+                        Text(start.formatted(date: .abbreviated, time: .omitted))
+                    } else if let due = task.dueAt {
                         Image(systemName: "calendar")
                         Text(due.formatted(date: .abbreviated, time: .omitted))
                     }
@@ -79,4 +87,3 @@ struct TaskRow: View {
         }
     }
 }
-
