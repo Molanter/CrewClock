@@ -10,14 +10,14 @@ import SwiftUI
 struct TaskRow: View {
     @Environment(\.colorScheme) var colorScheme
 
-    let task: TaskModel
+    let task: TaskFB
     
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title).font(.headline)
                 HStack(spacing: 8) {
-                    if let due = task.dueAt?.dateValue() {
+                    if let due = task.dueAt {
                         Image(systemName: "calendar")
                         Text(due.formatted(date: .abbreviated, time: .omitted))
                     }
@@ -79,3 +79,4 @@ struct TaskRow: View {
         }
     }
 }
+

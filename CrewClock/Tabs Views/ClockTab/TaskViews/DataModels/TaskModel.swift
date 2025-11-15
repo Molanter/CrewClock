@@ -50,8 +50,71 @@ struct TaskModel: Identifiable, Codable {
     }
 }
 
-
 extension TaskModel {
+    var priorityLabel: String {
+        switch priority {
+        case 1: return "Low"
+        case 2: return "Normal"
+        case 3: return "Medium"
+        case 4: return "High"
+        case 5: return "Critical"
+        default: return "Unknown"
+        }
+    }
+}
+
+
+struct TaskFB: Identifiable {
+    var id: String { documentId }
+    
+    var documentId: String
+    var title: String
+    var description: String
+    var status: String
+    var priority: Int
+    var dueAt: Date?
+    
+    var scheduledStartAt: Date?
+    var scheduledEndAt: Date?
+    
+    var createdAt: Date?
+    var creatorUID: String
+    var updatedAt: Date?
+    
+    var assigneeUIDs: [String: String]    // id -> "user" | "team"
+    var teamId: String?
+    var projectId: String?
+    var checklist: [ChecklistItem]
+
+    init(data: [String: Any], documentId: String) {
+        self.documentId = documentId
+        
+        self.title = data["title"] as? String ?? ""
+        self.description = data["description"] as? String ?? ""
+        self.status = data["status"] as? String ?? ""
+        self.priority = data["priority"] as? Int ?? 0
+        
+        self.dueAt = (data["dueAt"] as? Timestamp)?.dateValue()
+        self.scheduledStartAt = (data["scheduledStartAt"] as? Timestamp)?.dateValue()
+        self.scheduledEndAt = (data["scheduledEndAt"] as? Timestamp)?.dateValue()
+        
+        self.createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
+        self.creatorUID = data["creatorUID"] as? String ?? ""
+        self.updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue()
+        
+        self.assigneeUIDs = data["assigneeUIDs"] as? [String: String] ?? [:]
+        self.teamId = data["teamId"] as? String
+        self.projectId = data["projectId"] as? String
+        
+        self.checklist = (data["checklist"] as? [[String: Any]])?.compactMap { dict in
+            guard let text = dict["text"] as? String,
+                  let isChecked = dict["isChecked"] as? Bool else { return nil }
+            return ChecklistItem(text: text, isChecked: isChecked)
+        } ?? []
+    }
+}
+
+extension TaskFB {
     var priorityLabel: String {
         switch priority {
         case 1: return "Low"

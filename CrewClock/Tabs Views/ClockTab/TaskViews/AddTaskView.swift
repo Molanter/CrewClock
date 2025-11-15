@@ -9,8 +9,8 @@ import SwiftUI
 import FirebaseFirestore
 
 struct AddTaskView: View {
-    // If provided, the view runs in edit mode and pre-fills from this task
-    var existingTask: TaskModel? = nil
+    // If provided, the view runs in edit mode and pre-fills from this task (TaskFB)
+    var existingTask: TaskFB? = nil
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var userVM: UserViewModel
     @EnvironmentObject private var tasksVM: TaskViewModel
@@ -34,24 +34,16 @@ struct AddTaskView: View {
     
     let priorities = ["Low", "Medium", "High"]
     
+    /// Root view: wraps the task form in a NavigationStack and GlassList container.
     var body: some View {
         NavigationStack {
             GlassList {
                 detailsSection
-                
-                CrewSearchAddField(
-                    exclude: .constant(selectedEntities),
-                    selectedEntities: $selectedEntities,
-                    showAddedCrewList: true
-                )
-                
+                assigneesSection
                 checklistSection
-                
-                scheduleRow
-                
-                dueDateRow
-                
-                priorityRow
+                scheduleSection
+                dueDateSection
+                prioritySection
             }
             .navigationTitle(existingTask == nil ? "New Task" : "Edit Task")
             .toolbar { toolbar }
@@ -59,11 +51,15 @@ struct AddTaskView: View {
                 checkExist()
             }
             .onChange(of: selectedEntities) { newValue in
+                // Keep a simple array of user IDs, derived from the selected entities map
                 usersArray = newValue.compactMap { $0.value == "user" ? $0.key : nil }
             }
         }
     }
     
+    // MARK: - View Sections
+    
+    /// Section for entering core task details like title, notes, and project.
     private var detailsSection: some View {
         Section(header: Text("Details")) {
             TextField("Title", text: $title)
@@ -72,7 +68,18 @@ struct AddTaskView: View {
             projectRow
         }
     }
-        
+    
+    /// Section for selecting users/teams to assign this task to.
+    private var assigneesSection: some View {
+        CrewSearchAddField(
+            exclude: .constant(selectedEntities),
+            selectedEntities: $selectedEntities,
+            showAddedCrewList: true,
+            allowMySelfSelection: true
+        )
+    }
+    
+    /// Row that embeds the project selector control.
     private var projectRow: some View {
         HStack {
             Text("Select project:")
@@ -81,6 +88,7 @@ struct AddTaskView: View {
         }
     }
     
+    /// Section for adding and managing checklist items for the task.
     private var checklistSection: some View {
         Section(header: Text("Checklist")) {
             VStack(alignment: .leading, spacing: 8) {
@@ -92,7 +100,7 @@ struct AddTaskView: View {
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(K.Colors.accent)
                     }
                     .buttonStyle(.plain)
                 }
@@ -101,6 +109,7 @@ struct AddTaskView: View {
         }
     }
 
+    /// List of existing checklist items with toggle and delete controls.
     private var checklistList: some View {
         ForEach(checklist) { item in
             HStack {
@@ -128,7 +137,8 @@ struct AddTaskView: View {
         }
     }
     
-    private var scheduleRow: some View {
+    /// Section for optionally assigning a scheduled time range to the task.
+    private var scheduleSection: some View {
         Section(header: Text("Schedule")) {
             Toggle("Assign time range", isOn: $hasTimeRange.animation())
             if hasTimeRange {
@@ -145,7 +155,18 @@ struct AddTaskView: View {
         }
     }
 
-    private var priorityRow: some View {
+    /// Section for optionally assigning a due date to the task.
+    private var dueDateSection: some View {
+        Section(header: Text("Due Date")) {
+            Toggle("Set due date", isOn: $hasDueDate.animation())
+            if hasDueDate {
+                DatePicker("Due", selection: $dueDate, displayedComponents: .date)
+            }
+        }
+    }
+    
+    /// Section for setting the priority level of the task.
+    private var prioritySection: some View {
         Section(header: Text("Priority")) {
             Picker("Priority", selection: $priority) {
                 ForEach(priorities, id: \.self) { level in
@@ -156,15 +177,9 @@ struct AddTaskView: View {
         }
     }
     
-    private var dueDateRow: some View {
-        Section(header: Text("Due Date")) {
-            Toggle("Set due date", isOn: $hasDueDate.animation())
-            if hasDueDate {
-                DatePicker("Due", selection: $dueDate, displayedComponents: .date)
-            }
-        }
-    }
-    
+    // MARK: - Toolbar
+
+    /// Toolbar with Cancel and Save/Update actions for this form.
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
@@ -186,7 +201,7 @@ struct AddTaskView: View {
     }
     
     
-    //MARK: - Functions
+    // MARK: - Functions
     private func addChecklistRow() {
         let trimmed = newChecklistItem.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -252,7 +267,7 @@ struct AddTaskView: View {
         notes = t.description
         selectedEntities = t.assigneeUIDs ?? [:]
         usersArray = selectedEntities.filter { $0.value == "user" }.map { $0.key }
-        if let due = t.dueAt?.dateValue() {
+        if let due = t.dueAt {
             hasDueDate = true
             dueDate = due
         } else {
@@ -266,28 +281,30 @@ struct AddTaskView: View {
         }
         projectName = t.projectId ?? ""
         // Optional prefill: read checklist array from Firestore if present
-        if let id = t.id {
-            Task {
-                do {
-                    let snap = try await TaskModel.collection.document(id).getDocument()
-                    if let arr = snap.data()?["checklist"] as? [[String: Any]] {
-                        let items = arr.compactMap { dict -> ChecklistItem? in
-                            guard let idStr = dict["id"] as? String,
-                                  let text = dict["text"] as? String,
-                                  let uuid = UUID(uuidString: idStr) else { return nil }
-                            let checked = dict["isChecked"] as? Bool ?? false
-                            return ChecklistItem(id: uuid, text: text, isChecked: checked)
-                        }
-                        await MainActor.run {
-                            self.checklist = items
-                        }
+        let id = t.id
+        Task {
+            do {
+                let snap = try await Firestore.firestore()
+                    .collection("tasks")
+                    .document(id)
+                    .getDocument()
+                if let arr = snap.data()?["checklist"] as? [[String: Any]] {
+                    let items = arr.compactMap { dict -> ChecklistItem? in
+                        guard let idStr = dict["id"] as? String,
+                              let text = dict["text"] as? String,
+                              let uuid = UUID(uuidString: idStr) else { return nil }
+                        let checked = dict["isChecked"] as? Bool ?? false
+                        return ChecklistItem(id: uuid, text: text, isChecked: checked)
                     }
-                } catch {
-                    print("Checklist prefill error: \(error)")
+                    await MainActor.run {
+                        self.checklist = items
+                    }
                 }
+            } catch {
+                print("Checklist prefill error: \(error)")
             }
         }
-        if let start = t.scheduledStartAt?.dateValue(), let end = t.scheduledEndAt?.dateValue() {
+        if let start = t.scheduledStartAt, let end = t.scheduledEndAt {
             hasTimeRange = true
             startTime = start
             endTime = end
@@ -297,38 +314,78 @@ struct AddTaskView: View {
     }
     
     private func updateTask() {
+        Task {
+            do {
+                guard let edited = buildEditedTask() else { return }
+                
+                // Update core task fields via ViewModel
+                try await tasksVM.updateTask(edited)
+                
+                // Persist checklist as a separate field
+                try await saveChecklist(for: edited)
+                
+                print("Task \(edited.id) updated via ViewModel")
+            } catch {
+                print("Error updating task: \(error)")
+            }
+        }
+    }
+    
+    /// Map the current UI state back into an updated TaskFB.
+    private func buildEditedTask() -> TaskFB? {
+        guard var edited = existingTask else { return nil }
+        
+        // Priority string -> Int
         let priorityValue: Int
         switch priority {
         case "Low": priorityValue = 1
         case "High": priorityValue = 5
         default: priorityValue = 3
         }
+        
         let trimmedProject = projectName.trimmingCharacters(in: .whitespacesAndNewlines)
-        Task {
-            do {
-                guard var edited = existingTask else { return }
-                // Map UI state back onto the model
-                edited.title = title
-                edited.description = notes
-                edited.priority = priorityValue
-                edited.status = existingTask?.status ?? "open"
-                edited.updatedAt = Timestamp(date: Date())
-                edited.assigneeUIDs = selectedEntities.isEmpty ? nil : selectedEntities
-                edited.projectId = trimmedProject.isEmpty ? nil : trimmedProject
-                edited.dueAt = hasDueDate ? Timestamp(date: dueDate) : nil
-                edited.scheduledStartAt = hasTimeRange ? Timestamp(date: startTime) : nil
-                edited.scheduledEndAt = hasTimeRange ? Timestamp(date: endTime) : nil
-                
-                try await tasksVM.updateTask(edited)
-                if let id = edited.id {
-                    let arr = checklist.map { ["id": $0.id.uuidString, "text": $0.text, "isChecked": $0.isChecked] }
-                    try await TaskModel.collection.document(id).setData(["checklist": arr], merge: true)
-                }
-                print("Task \(edited.id ?? "<no id>") updated via ViewModel")
-            } catch {
-                print("Error updating task: \(error)")
-            }
+        
+        edited.title = title
+        edited.description = notes
+        edited.priority = priorityValue
+        edited.status = existingTask?.status ?? "open"
+        
+        // assignees: empty map means "no assignees"
+        edited.assigneeUIDs = selectedEntities.isEmpty ? [:] : selectedEntities
+        
+        // projectId: nil if empty
+        edited.projectId = trimmedProject.isEmpty ? nil : trimmedProject
+        
+        // dueAt: Date? on TaskFB, nil if "hasDueDate" is false
+        edited.dueAt = hasDueDate ? dueDate : nil
+        
+        // schedule range: Date? on TaskFB, nil when not used
+        if hasTimeRange {
+            edited.scheduledStartAt = startTime
+            edited.scheduledEndAt = endTime
+        } else {
+            edited.scheduledStartAt = nil
+            edited.scheduledEndAt = nil
         }
+        
+        return edited
+    }
+    
+    /// Save the checklist array to Firestore for the given task.
+    private func saveChecklist(for task: TaskFB) async throws {
+        let id = task.id
+        let arr = checklist.map {
+            [
+                "id": $0.id.uuidString,
+                "text": $0.text,
+                "isChecked": $0.isChecked
+            ]
+        }
+        
+        try await Firestore.firestore()
+            .collection("tasks")
+            .document(id)
+            .setData(["checklist": arr], merge: true)
     }
 }
 

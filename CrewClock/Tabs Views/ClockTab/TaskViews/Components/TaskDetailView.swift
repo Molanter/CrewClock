@@ -16,7 +16,7 @@ struct TaskDetailView: View {
 
     @EnvironmentObject var vm: TaskViewModel
 
-    @State private var task: TaskModel?
+    @State private var task: TaskFB?
     @State private var isLoading = true
     @State private var loadError: String?
 
@@ -42,20 +42,20 @@ struct TaskDetailView: View {
         .onDisappear { disappearFunc() }
     }
     
-    private func list(for task: TaskModel) -> some View {
+    private func list(for task: TaskFB) -> some View {
         GlassList {
             infoSection(task)
-            if let crewUids = task.assigneeUIDs {
-                crewSection(entities: crewUids)
-            }
+            
+            crewSection(entities: task.assigneeUIDs)
+            
             actionsSection
         }
     }
     
-    private func infoSection(_ task: TaskModel) -> some View {
+    private func infoSection(_ task: TaskFB) -> some View {
         Section("Info") {
             if !task.description.isEmpty { Text(task.description) }
-            if let due = task.dueAt?.dateValue() {
+            if let due = task.dueAt {
                 LabeledContent("Due", value: due.formatted(date: .abbreviated, time: .omitted))
             }
             LabeledContent("Priority", value: task.priorityLabel.capitalized)
@@ -126,24 +126,26 @@ struct TaskDetailView: View {
     private func fetchTask() async {
         isLoading = true
         loadError = nil
+        defer { isLoading = false }
+
         do {
-            let snap = try await TaskModel.collection.document(taskId).getDocument()
-            if snap.exists {
-                do {
-                    task = try snap.data(as: TaskModel.self)
-                } catch {
-                    loadError = "Decoding error: \(error.localizedDescription)"
-                    task = nil
-                }
-            } else {
+            let snap = try await Firestore.firestore()
+                .collection("tasks")
+                .document(taskId)
+                .getDocument()
+
+            guard snap.exists, let data = snap.data() else {
                 loadError = "Task not found."
                 task = nil
+                return
             }
+
+            // Initialize TaskFB from the raw Firestore data
+            task = TaskFB(data: data, documentId: snap.documentID)
         } catch {
             loadError = error.localizedDescription
             task = nil
         }
-        isLoading = false
     }
 
 }

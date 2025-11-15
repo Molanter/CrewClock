@@ -13,7 +13,7 @@ import FirebaseFirestore
 
 @MainActor
 final class TaskViewModel: ObservableObject {
-    @Published var tasks: [TaskModel] = []
+    @Published var tasks: [TaskFB] = []
     @Published var filter: TaskFilter = .assignedToMe
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -29,44 +29,50 @@ final class TaskViewModel: ObservableObject {
         listener?.remove(); listener = nil
         isLoading = true
         errorMessage = nil
+
         listener = query.addSnapshotListener { [weak self] snap, err in
             guard let self = self else { return }
             self.isLoading = false
+
+            // Handle Firestore errors
             if let err = err as NSError? {
-                // If it's an index error, fall back to a simpler query that does not require a composite index
                 let code = FirestoreErrorCode(_nsError: err).code
                 if code == .failedPrecondition || err.localizedDescription.lowercased().contains("index") {
+                    // If it's an index error, fall back to a simpler query that does not require a composite index
                     var fallback: Query = TaskModel.collection
                     if let me = self.me {
                         switch self.filter {
                         case .assignedToMe:
-                            fallback = fallback.whereField("assigneeUIDs", arrayContains: me)
+                            // Fallback: still query the map field path but without extra ordering
+                            fallback = fallback.whereField("assigneeUIDs.\(me)", isEqualTo: "user")
                         case .createdByMe:
                             fallback = fallback.whereField("creatorUID", isEqualTo: me)
                         case .all:
-                            break
+                            let orFilter = Filter.orFilter([
+                                Filter.whereField("creatorUID", isEqualTo: me),
+                                Filter.whereField("assigneeUIDs.\(me)", isEqualTo: "user")
+                            ])
+                            fallback = fallback.whereFilter(orFilter)
                         }
                     }
                     self.errorMessage = "Using fallback (no sort). Create Firestore index to enable full sorting."
                     self.attachListener(with: fallback)
                     return
                 }
+
                 self.errorMessage = err.localizedDescription
                 self.tasks = []
                 return
             }
-            var decoded: [TaskModel] = []
-            var firstError: String?
+
+            // Decode documents into TaskFB models
+            var decoded: [TaskFB] = []
             snap?.documents.forEach { doc in
-                do {
-                    let item = try doc.data(as: TaskModel.self)
-                    decoded.append(item)
-                } catch {
-                    if firstError == nil {
-                        firstError = "Decode failed for \(doc.documentID): \(error.localizedDescription)"
-                    }
-                }
+                let data = doc.data()
+                let item = TaskFB(data: data, documentId: doc.documentID)
+                decoded.append(item)
             }
+
             // Sort: incomplete tasks first, then by updatedAt descending
             self.tasks = decoded.sorted {
                 let aDone = $0.status.lowercased() == "done"
@@ -74,11 +80,13 @@ final class TaskViewModel: ObservableObject {
                 if aDone != bDone {
                     return !aDone && bDone // unfinished before done
                 }
-                let aDate = $0.updatedAt?.dateValue() ?? .distantPast
-                let bDate = $1.updatedAt?.dateValue() ?? .distantPast
+                let aDate = $0.updatedAt ?? .distantPast
+                let bDate = $1.updatedAt ?? .distantPast
                 return aDate > bDate // newer first
             }
-            self.errorMessage = firstError
+
+            // No per-document decode error reporting here because TaskFB init is non-throwing.
+            self.errorMessage = nil
         }
     }
 
@@ -106,14 +114,18 @@ final class TaskViewModel: ObservableObject {
         let query: Query
         switch filter {
         case .assignedToMe:
-            query = baseFiltered.whereField("assigneeUIDs", arrayContains: me)
+            // assigneeUIDs is a map: uid -> "user"
+            // Query the map field path for this user id.
+            query = baseFiltered.whereField("assigneeUIDs.\(me)", isEqualTo: "user")
+
         case .createdByMe:
             query = baseFiltered.whereField("creatorUID", isEqualTo: me)
+
         case .all:
             // All = (assigned to me) OR (created by me)
             let orFilter = Filter.orFilter([
                 Filter.whereField("creatorUID", isEqualTo: me),
-                Filter.whereField("assigneeUIDs", arrayContains: me)
+                Filter.whereField("assigneeUIDs.\(me)", isEqualTo: "user")
             ])
             query = baseFiltered.whereFilter(orFilter)
         }
@@ -173,11 +185,7 @@ final class TaskViewModel: ObservableObject {
     /// Update an existing task after editing.
     /// Pass the full edited `TaskModel`. Fields set to `nil`/empty will be removed in Firestore.
     @discardableResult
-    func updateTask(_ task: TaskModel) async throws -> Void {
-        // Ensure we have an ID to update
-        guard let taskId = task.id else {
-            throw NSError(domain: "TaskVM", code: 400, userInfo: [NSLocalizedDescriptionKey: "Task has no id."])
-        }
+    func updateTask(_ task: TaskFB) async throws -> Void {
 
         var data: [String: Any] = [
             "title": task.title,
@@ -195,8 +203,8 @@ final class TaskViewModel: ObservableObject {
         }
 
         // assigneeUIDs: set non-empty or delete
-        if let assignees = task.assigneeUIDs, !assignees.isEmpty {
-            data["assigneeUIDs"] = assignees
+        if !task.assigneeUIDs.isEmpty {
+            data["assigneeUIDs"] = task.assigneeUIDs
         } else {
             data["assigneeUIDs"] = FieldValue.delete()
         }
@@ -218,7 +226,7 @@ final class TaskViewModel: ObservableObject {
         let recipients = recipientsDict.filter { $0.value == "user" }.map { $0.key }
         try await manager.upsert(
             data,
-            at: FSPath.Task(id: taskId),
+            at: FSPath.Task(id: task.id),
             merge: true,
             notify: !recipients.isEmpty,
             notifyType: .taskAssigned,

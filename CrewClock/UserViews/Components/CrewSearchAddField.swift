@@ -18,6 +18,7 @@ struct CrewSearchAddField: View {
     @Binding var selectedEntities: [String: String]
     @State private var crewSearch: String = ""
     let showAddedCrewList: Bool
+    var allowMySelfSelection: Bool = false
     
     var body: some View {
         let userIDs = selectedEntities.filter { $0.value == "user" }.map { $0.key }
@@ -45,16 +46,38 @@ struct CrewSearchAddField: View {
             if !userIDs.isEmpty && showAddedCrewList { crewList(for: userIDs) }
             if !teamIDs.isEmpty && showAddedCrewList { teamList(for: teamIDs) }
 
+            /// Allows to add myself to Array
+            if allowMySelfSelection {
+                meRow
+            }
+
             TextField("Search to add crew", text: $crewSearch)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
+        }
+    }
 
-            if !crewSearch.isEmpty {
-                crewSearchingView
-            }
-            if !crewSearch.isEmpty {
-                teamSearchingView
+    /// Row for quickly adding/removing the current user to/from the crew.
+    private var meRow: some View {
+        // Prefer the user from UserViewModel; fall back to Auth if needed.
+        let meUID = userViewModel.user?.uid ?? Auth.auth().currentUser?.uid
+        
+        return Group {
+            if let meUID {
+                Toggle("Add myself", isOn: Binding<Bool>(
+                    get: {
+                        selectedEntities[meUID] == "user"
+                    },
+                    set: { isOn in
+                        if isOn {
+                            selectedEntities[meUID] = "user"
+                        } else {
+                            selectedEntities.removeValue(forKey: meUID)
+                        }
+                    }
+                ))
+                .toggleStyle(.switch)
             }
         }
     }
@@ -114,12 +137,13 @@ struct CrewSearchAddField: View {
     // MARK: Crew list
     private func crewList(for userIDs: [String]) -> some View {
         ForEach(userIDs, id: \.self) { uid in
-            HStack {
+            HStack(spacing: 10) {
                 Button(action: { removeUserFromCrew(uid) }) {
                     Image(systemName: "minus.circle.fill")
                         .symbolRenderingMode(.multicolor)
                         .foregroundColor(.red)
                 }
+                .buttonStyle(.borderless)
                 UserRowView(uid: uid)
             }
         }
@@ -133,6 +157,7 @@ struct CrewSearchAddField: View {
                         .symbolRenderingMode(.multicolor)
                         .foregroundColor(.red)
                 }
+                .buttonStyle(.borderless)
                 TeamRowView(teamId: teamId)
             }
         }
@@ -158,4 +183,3 @@ struct CrewSearchAddField: View {
     .environmentObject(UserViewModel())
     .environmentObject(SearchUserViewModel())
 }
-

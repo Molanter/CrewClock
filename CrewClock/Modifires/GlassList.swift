@@ -29,7 +29,7 @@ public struct GlassList<Content: View>: View {
 //                .ignoresSafeArea()   // under status/nav/tab bars
 //        }
         .listStyle(.insetGrouped)
-//        .scrollContentBackground(.hidden)
+        .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively) // restore keyboard handling
     }
 }

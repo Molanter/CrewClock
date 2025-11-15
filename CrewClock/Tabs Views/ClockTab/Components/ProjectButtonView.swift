@@ -51,6 +51,7 @@ struct ProjectButtonView: View {
             } label: {
                 Label("Open", systemImage: "folder")
             }
+            .accentColor(.primary)
             Button{
                 userViewModel.clockIn(log: .init(projectName: project.name, date: Date.now, timeStarted: Date.now))
             }label: {
@@ -131,7 +132,7 @@ struct ProjectButtonView: View {
             .frame(height: 100)
             .background {
                 RoundedRectangle(cornerRadius: K.UI.cornerRadius)
-                    .fill(Color.listRow)
+                    .fill(Color(.secondarySystemBackground))
             }
     }
 }
@@ -140,3 +141,4 @@ struct ProjectButtonView: View {
 //#Preview {
 //    ProjectButtonView()
 //}
+
