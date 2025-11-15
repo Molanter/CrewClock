@@ -66,7 +66,7 @@ struct UserFB: Identifiable {
                 date: (logData["date"] as? Timestamp)?.dateValue() ?? Date(),
                 timeStarted: (logData["timeStarted"] as? Timestamp)?.dateValue() ?? Date(),
                 timeFinished: (logData["timeFinished"] as? Timestamp)?.dateValue() ?? Date(),
-                crewUID: logData["crewUID"] as? [String: String] ?? [:],
+                crewUID: logData["crewUID"] as? [String] ?? [],
                 expenses: logData["expenses"] as? Double ?? 0.0,
                 row: logData["row"] as? Int ?? 0
             )

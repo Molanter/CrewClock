@@ -65,8 +65,8 @@ struct LogDetailView: View {
             if log.crewUID.isEmpty {
                 Text("No crew assigned")
             } else {
-                ForEach(log.crewUID.sorted(by: { $0.key < $1.key }), id: \.key) { uid, kind in
-                    LabeledContent(uid, value: kind)
+                ForEach(log.crewUID.sorted(), id: \.self) { uid in
+                    UserRowView(uid: uid)
                 }
             }
         }

@@ -25,9 +25,8 @@ struct AddTaskView: View {
     @State private var endTime: Date = Calendar.current.date(bySettingHour: 16, minute: 00, second: 0, of: Date()) ?? Date()
     @State private var priority: String = "Medium"
     @State private var projectName: String = ""
-    @State private var usersArray: [String] = []
     @State private var didPrefill = false
-    @State private var selectedEntities: [String: String] = [:] // id -> "user" | "team"
+    @State private var selectedUIDs: [String] = []   // selected user UIDs only
     // Checklist
     @State private var newChecklistItem: String = ""
     @State private var checklist: [ChecklistItem] = []
@@ -50,10 +49,6 @@ struct AddTaskView: View {
             .onAppear {
                 checkExist()
             }
-            .onChange(of: selectedEntities) { newValue in
-                // Keep a simple array of user IDs, derived from the selected entities map
-                usersArray = newValue.compactMap { $0.value == "user" ? $0.key : nil }
-            }
         }
     }
     
@@ -69,11 +64,11 @@ struct AddTaskView: View {
         }
     }
     
-    /// Section for selecting users/teams to assign this task to.
+    /// Section for selecting users to assign this task to.
     private var assigneesSection: some View {
         CrewSearchAddField(
-            exclude: .constant(selectedEntities),
-            selectedEntities: $selectedEntities,
+            excludeUIDs: $selectedUIDs,
+            selectedUIDs: $selectedUIDs,
             showAddedCrewList: true,
             allowMySelfSelection: true
         )
@@ -145,7 +140,7 @@ struct AddTaskView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     DatePicker("Start", selection: $startTime, displayedComponents: [.date, .hourAndMinute])
                     DatePicker("End", selection: $endTime, in: startTime..., displayedComponents: [.date, .hourAndMinute])
-                    if selectedEntities.isEmpty {
+                    if selectedUIDs.isEmpty {
                         Text("Select at least one assignee above to schedule.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -236,7 +231,7 @@ struct AddTaskView: View {
             "updatedAt": Timestamp(date: Date()),
             "createdAt": Timestamp(date: Date())
         ]
-        if !selectedEntities.isEmpty { data["assigneeUIDs"] = selectedEntities }
+        if !selectedUIDs.isEmpty { data["assigneeUserUIDs"] = selectedUIDs }
         if hasDueDate { data["dueAt"] = Timestamp(date: dueDate) }
         if !projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             data["projectId"] = projectName
@@ -250,7 +245,7 @@ struct AddTaskView: View {
         }
         Task {
             do {
-                let recipients = selectedEntities.filter { $0.value == "user" }.map { $0.key }
+                let recipients = selectedUIDs
                 let taskId = try await manager.add(data, to: FSPath.Tasks(), notify: !recipients.isEmpty, notifyType: .taskAssigned, notifyRecipients: recipients)
                 print("Task saved with ID: \(taskId)")
             } catch {
@@ -265,8 +260,7 @@ struct AddTaskView: View {
         didPrefill = true
         title = t.title
         notes = t.description
-        selectedEntities = t.assigneeUIDs ?? [:]
-        usersArray = selectedEntities.filter { $0.value == "user" }.map { $0.key }
+        selectedUIDs = t.assigneeUserUIDs
         if let due = t.dueAt {
             hasDueDate = true
             dueDate = due
@@ -350,8 +344,8 @@ struct AddTaskView: View {
         edited.priority = priorityValue
         edited.status = existingTask?.status ?? "open"
         
-        // assignees: empty map means "no assignees"
-        edited.assigneeUIDs = selectedEntities.isEmpty ? [:] : selectedEntities
+        // assignees: array of user ids only
+        edited.assigneeUserUIDs = selectedUIDs
         
         // projectId: nil if empty
         edited.projectId = trimmedProject.isEmpty ? nil : trimmedProject

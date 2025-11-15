@@ -7,23 +7,23 @@
 
 import SwiftUI
 import FirebaseAuth
+import FirebaseFirestore
 
 struct CrewSearchAddField: View {
     @EnvironmentObject private var userViewModel: UserViewModel
     @EnvironmentObject private var searchUserViewModel: SearchUserViewModel
 
-    /// Entities to exclude from search (id -> "user" or "team")
-    @Binding var exclude: [String: String]
-    /// Unified selection: id -> "user" or "team"
-    @Binding var selectedEntities: [String: String]
+    /// User IDs to exclude from search (already added, etc.)
+    @Binding var excludeUIDs: [String]
+    /// Unified selection: list of selected user IDs
+    @Binding var selectedUIDs: [String]
     @State private var crewSearch: String = ""
     let showAddedCrewList: Bool
     var allowMySelfSelection: Bool = false
     
     var body: some View {
-        let userIDs = selectedEntities.filter { $0.value == "user" }.map { $0.key }
-        let teamIDs = selectedEntities.filter { $0.value == "team" }.map { $0.key }
-        crewSection(userIDs: userIDs, teamIDs: teamIDs)
+        let userIDs = selectedUIDs
+        crewSection(userIDs: userIDs)
         // Debounced search driven from view-level task
         .task(id: crewSearch) {
             let q = crewSearch.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -32,19 +32,20 @@ struct CrewSearchAddField: View {
                 return
             }
             try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
-            if let me = Auth.auth().currentUser?.uid { exclude[me] = "user" }
 
-            let excludeUserIDs = Set(exclude.filter { $0.value == "user" }.keys)
-            let excludeTeamIDs = Set(exclude.filter { $0.value == "team" }.keys)
+            var excludeUserIDs = Set(excludeUIDs)
+            if let me = Auth.auth().currentUser?.uid {
+                excludeUserIDs.insert(me)
+            }
+
             searchUserViewModel.searchUsers(with: q, alsoExclude: excludeUserIDs)
-            await searchUserViewModel.searchTeams(with: q, excludeTeamIDs: excludeTeamIDs)
+            await searchUserViewModel.searchTeams(with: q, excludeTeamIDs: [])
         }
     }
     
-    private func crewSection(userIDs: [String], teamIDs: [String]) -> some View {
+    private func crewSection(userIDs: [String]) -> some View {
         Section(header: Text("Crew")) {
             if !userIDs.isEmpty && showAddedCrewList { crewList(for: userIDs) }
-            if !teamIDs.isEmpty && showAddedCrewList { teamList(for: teamIDs) }
 
             /// Allows to add myself to Array
             if allowMySelfSelection {
@@ -55,6 +56,13 @@ struct CrewSearchAddField: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
+
+            // Show search results when there is a non-empty query
+            let query = crewSearch.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !query.isEmpty {
+                crewSearchingView
+                teamSearchingView
+            }
         }
     }
 
@@ -67,13 +75,15 @@ struct CrewSearchAddField: View {
             if let meUID {
                 Toggle("Add myself", isOn: Binding<Bool>(
                     get: {
-                        selectedEntities[meUID] == "user"
+                        selectedUIDs.contains(meUID)
                     },
                     set: { isOn in
                         if isOn {
-                            selectedEntities[meUID] = "user"
+                            if !selectedUIDs.contains(meUID) {
+                                selectedUIDs.append(meUID)
+                            }
                         } else {
-                            selectedEntities.removeValue(forKey: meUID)
+                            selectedUIDs.removeAll { $0 == meUID }
                         }
                     }
                 ))
@@ -85,7 +95,7 @@ struct CrewSearchAddField: View {
     // MARK: Crew search results
     private var crewSearchingView: some View {
         let me = userViewModel.user?.uid
-        let excludeSet = Set(exclude.keys)
+        let excludeSet = Set(excludeUIDs)
         let results = searchUserViewModel.foundUIDs.filter { $0 != me && !excludeSet.contains($0) }
         return Group {
             if results.isEmpty {
@@ -97,9 +107,11 @@ struct CrewSearchAddField: View {
                         Spacer()
                         Button("Add") {
                             crewSearch = ""
-                            selectedEntities[uid] = "user"
+                            if !selectedUIDs.contains(uid) {
+                                selectedUIDs.append(uid)
+                            }
                             print("User uid added: \(uid)")
-                            print("Selections:", selectedEntities)
+                            print("Selections:", selectedUIDs)
                         }
                         .buttonStyle(.plain)
                     }
@@ -111,7 +123,6 @@ struct CrewSearchAddField: View {
     // MARK: Team search results
     private var teamSearchingView: some View {
         let results = searchUserViewModel.foundTeamIDs
-            .filter { !selectedEntities.keys.contains($0) } // avoid duplicates
 
         return Group {
             if results.isEmpty {
@@ -122,10 +133,9 @@ struct CrewSearchAddField: View {
                         TeamRowView(teamId: teamId)
                         Spacer()
                         Button("Add") {
-                            crewSearch = ""
-                            selectedEntities[teamId] = "team"
-                            print("Team added:", teamId)
-                            print("Selections:", selectedEntities)
+                            Task { @MainActor in
+                                await addTeamAsExpandedUsers(teamId)
+                            }
                         }
                         .buttonStyle(.plain)
                     }
@@ -149,35 +159,64 @@ struct CrewSearchAddField: View {
         }
     }
 
-    private func teamList(for teamIDs: [String]) -> some View {
-        ForEach(teamIDs, id: \.self) { teamId in
-            HStack {
-                Button(action: { removeTeamFromCrew(teamId) }) {
-                    Image(systemName: "minus.circle.fill")
-                        .symbolRenderingMode(.multicolor)
-                        .foregroundColor(.red)
-                }
-                .buttonStyle(.borderless)
-                TeamRowView(teamId: teamId)
-            }
-        }
-    }
+    /// Treats a team as a saved group and adds its members as individual user selections.
+    /// Loads members from Firestore at `teams/{teamId}/members` and appends their UIDs.
+    @MainActor
+    private func addTeamAsExpandedUsers(_ teamId: String) async {
+        // Clear the search field so the user sees the updated crew list.
+        crewSearch = ""
 
-    private func removeTeamFromCrew(_ teamId: String) {
-        selectedEntities.removeValue(forKey: teamId)
+        do {
+            let db = Firestore.firestore()
+            // Fetch all members of this team
+            let snapshot = try await db
+                .collection("teams")
+                .document(teamId)
+                .collection("members")
+                .getDocuments()
+
+            let rawMemberUIDs: [String] = snapshot.documents.compactMap { doc in
+                // Prefer explicit uid field; fall back to documentID if needed.
+                if let uid = doc.data()["uid"] as? String {
+                    return uid
+                } else {
+                    return doc.documentID
+                }
+            }
+
+            if rawMemberUIDs.isEmpty {
+                print("⚠️ No member documents found for team \(teamId)")
+            }
+
+            // Never add myself when expanding a team
+            let meUID = userViewModel.user?.uid ?? Auth.auth().currentUser?.uid
+            let memberUIDs = rawMemberUIDs.filter { uid in
+                if let meUID { return uid != meUID }
+                return true
+            }
+
+            // Append each member UID individually to the crew selection
+            for uid in memberUIDs {
+                if !selectedUIDs.contains(uid) {
+                    selectedUIDs.append(uid)
+                }
+            }
+        } catch {
+            print("⚠️ Failed to expand team \(teamId) into members: \(error)")
+        }
     }
 
     // Crew ops
     private func removeUserFromCrew(_ uid: String) {
-        selectedEntities.removeValue(forKey: uid)
+        selectedUIDs.removeAll { $0 == uid }
     }
 }
 
 
 #Preview {
     CrewSearchAddField(
-        exclude: .constant([:]),
-        selectedEntities: .constant([:]),
+        excludeUIDs: .constant([]),
+        selectedUIDs: .constant([]),
         showAddedCrewList: true
     )
     .environmentObject(UserViewModel())

@@ -25,8 +25,8 @@ struct AddProjectView: View {
     @State private var newChecklistItem: String = ""
     @State private var errorMessage: String = ""
     @State private var crewSearch: String = ""
-    @State private var originalCrew: [String: String] = [:]
-    @State private var selectedEntities: [String: String] = [:] // id -> "user" | "team"
+    @State private var originalCrew: [String] = []
+    @State private var selectedUIDs: [String] = []   // selected user UIDs only
 
     // Keep focus stable while list updates
     private enum FocusField: Hashable { case crewSearch }
@@ -52,7 +52,7 @@ struct AddProjectView: View {
             _project = State(initialValue: Project(
                 projectName: "",
                 owner: user?.uid ?? "",
-                crew: [:],
+                crew: [],
                 checklist: [],
                 comments: "",
                 color: "",
@@ -94,7 +94,8 @@ struct AddProjectView: View {
     private var infoSection: some View {
         Section(header: Text("Project Info")) {
             TextField("Project Name *", text: $project.projectName)
-            TextField("Project description *", text: $project.comments)
+            TextField("Project description *", text: $project.comments, axis: .vertical)
+                .lineLimit(5)
             checklist
         }
     }
@@ -134,11 +135,12 @@ struct AddProjectView: View {
 
     private var crewSection: some View {
         CrewSearchAddField(
-            exclude: .constant(project.crew),
-            selectedEntities: $selectedEntities,
+            excludeUIDs: $selectedUIDs,
+            selectedUIDs: $selectedUIDs,
             showAddedCrewList: true
         )
     }
+
 
 
     // MARK: Details
@@ -235,7 +237,7 @@ struct AddProjectView: View {
         if project.owner == user?.displayName ?? "" {
             project.owner = user?.uid ?? ""
         }
-        project.crew = selectedEntities
+        project.crew = selectedUIDs
         Task { await projectViewModel.addProject(project) }
         notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
         dismiss()
@@ -248,17 +250,15 @@ struct AddProjectView: View {
         } else {
             originalCrew = project.crew
         }
-        // Prefill selectedEntities with existing crew (users/teams as stored)
+        // Prefill selectedUIDs with existing crew (array of user UIDs)
         let crew = editingProject?.crew ?? project.crew
-        selectedEntities = crew
+        selectedUIDs = crew
     }
 
     // Send invite notifications to newly added crew
-    private func notifyNewCrewConnectionsIfNeeded(originalCrew: [String: String]) {
-        // Newly added entries that are users (ignore teams for direct user notifications)
-        let addedUserIds = project.crew
-            .filter { $0.value == "user" && originalCrew[$0.key] == nil }
-            .map { $0.key }
+    private func notifyNewCrewConnectionsIfNeeded(originalCrew: [String]) {
+        // Newly added user UIDs
+        let addedUserIds = project.crew.filter { !originalCrew.contains($0) }
         for uid in addedUserIds {
             let newNotification = NotificationModel(
                 title: "Invite to project",
@@ -277,7 +277,7 @@ struct AddProjectView: View {
     // Update existing project
     private func updateProject() {
         if let editingProject = editingProject {
-            project.crew = selectedEntities
+            project.crew = selectedUIDs
             Task { await projectViewModel.updateProject(documentId: editingProject.documentId, with: project) }
             notifyNewCrewConnectionsIfNeeded(originalCrew: originalCrew)
             dismiss()

@@ -14,6 +14,7 @@ struct CalendarLogsView: View {
     @State private var currentDate = Date()
     @State private var currentWeek: [Date.Day] = Date.currentWeek(from: Date())
     @State private var selectedDate: Date?
+    @StateObject private var myTasksVM = MyAssignedTasksViewModel()
 
     // Shared pager selection (0 = prev, 1 = current, 2 = next)
     @State private var pageIndex: Int = 1
@@ -24,6 +25,11 @@ struct CalendarLogsView: View {
     var body: some View {
         NavigationStack {
             page
+        }
+        .onAppear {
+            Task {
+                await myTasksVM.loadAssignedTasks()
+            }
         }
     }
 
@@ -134,17 +140,50 @@ struct CalendarLogsView: View {
         selectedDate = currentWeek.first?.date
     }
 
-    @ViewBuilder
-    private func tasks(for date: Date) -> some View {
-        let filteredLogs: [LogFB] = logsViewModel.logs.filter { log in
+    // MARK: - Data helpers
+    
+    private func logsForDate(_ date: Date) -> [LogFB] {
+        logsViewModel.logs.filter { log in
             Calendar.current.isDate(log.date, inSameDayAs: date)
         }
-        if filteredLogs.isEmpty {
-            // K.Logs.dummyLog is dummy/emty log for now
+    }
+    
+    private func assignedTasks(for date: Date) -> [TaskFB] {
+        myTasksVM.tasksScheduled(on: date)
+    }
+
+    @ViewBuilder
+    private func tasks(for date: Date) -> some View {
+        let logs = logsForDate(date)
+        let tasks = assignedTasks(for: date)
+        
+        if logs.isEmpty && tasks.isEmpty {
             LogCalendarRow(log: K.Logs.dummyLog, isEmpty: true, selectedProject: .constant(K.Logs.dummyLog))
         } else {
-            ForEach(filteredLogs) { log in
-                LogCalendarRow(log: log, isEmpty: false, selectedProject: .constant(log))
+            VStack(alignment: .leading, spacing: 8) {
+                // Logs for this day
+                if !logs.isEmpty {
+                    ForEach(logs) { log in
+                        LogCalendarRow(log: log, isEmpty: false, selectedProject: .constant(log))
+                    }
+                }
+                
+                // Tasks for this day
+                if !tasks.isEmpty {
+                    if !logs.isEmpty {
+                        Divider()
+                            .padding(.top, 4)
+                    }
+                    
+                    Text("Tasks for this day")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.bottom, 2)
+                    
+                    ForEach(tasks) { task in
+                        TaskCalendarRow(task: task)
+                    }
+                }
             }
         }
     }
@@ -155,6 +194,75 @@ struct CalendarLogsView: View {
 
     private func backGroundView() -> some View {
         ListBackground().ignoresSafeArea()
+    }
+    
+    // MARK: - Task Row
+    
+    private struct TaskCalendarRow: View {
+        let task: TaskFB
+        
+        var body: some View {
+            NavigationLink {
+                TaskDetailView(taskId: task.id)
+            } label: {
+                HStack(spacing: 12) {
+                    // Leading status icon in a subtle capsule
+                    ZStack {
+                        Capsule(style: .continuous)
+                            .fill(Color(.secondarySystemBackground))
+                        Image(systemName: statusIcon)
+                            .font(.subheadline)
+                    }
+                    .frame(width: 32, height: 32)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(task.title.isEmpty ? "Untitled task" : task.title)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                        
+                        if !task.description.isEmpty {
+                            Text(task.description)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                        
+                        // Small status label
+                        Text(statusText)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(.secondarySystemBackground))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        
+        private var statusInfo: (text: String, icon: String) {
+            let status = task.status.lowercased()
+            switch status {
+            case "done":
+                return ("Completed", "checkmark.circle.fill")
+            case "inprogress", "in progress":
+                return ("In progress", "clock.fill")
+            default:
+                let text = status.capitalized.isEmpty ? "Open" : status.capitalized
+                return (text, "circle.dashed")
+            }
+        }
+        
+        private var statusText: String { statusInfo.text }
+        private var statusIcon: String { statusInfo.icon }
     }
 }
 

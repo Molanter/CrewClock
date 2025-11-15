@@ -89,7 +89,7 @@ struct LogCalendarRow: View {
                         if !log.comment.isEmpty {
                             comment
                         }
-                        footerText
+//                        footerText
                     }
                 }
                 .padding(K.UI.padding)
@@ -105,9 +105,14 @@ struct LogCalendarRow: View {
     
     private var headerText: some View {
         HStack(alignment: .center, spacing: 5) {
-            Text(formattedTime(log.timeStarted) + " - " + formattedTime(log.timeFinished))
-                .font(.callout)
-                .bold()
+            VStack(alignment: .leading) {
+                Text(formattedTime(log.timeStarted) + " - " + formattedTime(log.timeFinished))
+                    .font(.callout)
+                    .bold()
+                Text(formattedDate(log.date))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
             ProjectsMenuView(selected: $selectedProject)
         }
@@ -120,19 +125,19 @@ struct LogCalendarRow: View {
     }
     
     
-    private var footerText: some View {
-        HStack {
-            Text(formattedDate(log.date))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 0)
-            
-            Text("Some place, Minnesota")
-        }
-        .font(.caption)
-        .foregroundStyle(.gray)
-        .padding(.top, 5)
-    }
+//    private var footerText: some View {
+//        HStack {
+//            Text(formattedDate(log.date))
+//                .font(.footnote)
+//                .foregroundStyle(.secondary)
+//            Spacer(minLength: 0)
+//            
+//            Text("Some place, Minnesota")
+//        }
+//        .font(.caption)
+//        .foregroundStyle(.gray)
+//        .padding(.top, 5)
+//    }
     
     private var noLog: some View {
         VStack(spacing: 8) {

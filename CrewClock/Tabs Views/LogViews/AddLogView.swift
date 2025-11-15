@@ -59,7 +59,8 @@ struct AddLogView: View {
         Section(header: Text("Log Info")) {
             ProjectSelectorView(error: .constant(nil), text: $log.projectName)
             
-            TextField("Comment", text: $log.comment)
+            TextField("Comment", text: $log.comment, axis: .vertical)
+                .lineLimit(5)
                 .focused($focusedField, equals: .comment)
                 .submitLabel(.next)
                 .onSubmit { focusedField = .timeStarted }

@@ -11,7 +11,7 @@ import FirebaseFirestore
 
 @MainActor
 final class AddMembersToTeamViewModel: ObservableObject {
-    @Published var members: [String: String] = [:]   // id -> "user" | "team"
+    @Published var members: [String] = []   // user UIDs
     @Published var errorMessage = ""
     @Published var isSaving = false
 
@@ -49,8 +49,8 @@ final class AddMembersToTeamViewModel: ObservableObject {
             // Build a set of existing UIDs from subcollection document IDs
             var existingByUID = Set<String>(existingSnap.documents.map { $0.documentID })
 
-            // Only users can be direct members of a team; ignore teams in the selection
-            let selectedUserIds: [String] = members.compactMap { $0.value.lowercased() == "user" ? $0.key : nil }
+            // Selected user UIDs
+            let selectedUserIds: [String] = members
 
             // Determine which selected UIDs are new (not already present)
             let newUIDs = selectedUserIds.filter { !existingByUID.contains($0) }

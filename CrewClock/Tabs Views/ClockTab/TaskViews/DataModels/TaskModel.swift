@@ -22,7 +22,8 @@ struct TaskModel: Identifiable, Codable {
     var createdAt: Timestamp?
     var creatorUID: String               // was createdBy
     var updatedAt: Timestamp?            // was lastUpdatedAt
-    var assigneeUIDs: [String: String]?  // id -> "user" | "team"
+    var assigneeUserUIDs: [String]?      // direct user assignees
+    var assigneeStates: [String: String]?
     var teamId: String?
     var projectId: String?
     var checklist: [ChecklistItem]
@@ -39,7 +40,8 @@ struct TaskModel: Identifiable, Codable {
         case createdAt
         case creatorUID
         case updatedAt
-        case assigneeUIDs
+        case assigneeUserUIDs
+        case assigneeStates
         case teamId
         case projectId
         case checklist
@@ -81,7 +83,8 @@ struct TaskFB: Identifiable {
     var creatorUID: String
     var updatedAt: Date?
     
-    var assigneeUIDs: [String: String]    // id -> "user" | "team"
+    var assigneeUserUIDs: [String]        // direct user assignees
+    var assigneeStates: [String: String]
     var teamId: String?
     var projectId: String?
     var checklist: [ChecklistItem]
@@ -102,7 +105,8 @@ struct TaskFB: Identifiable {
         self.creatorUID = data["creatorUID"] as? String ?? ""
         self.updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue()
         
-        self.assigneeUIDs = data["assigneeUIDs"] as? [String: String] ?? [:]
+        self.assigneeUserUIDs = data["assigneeUserUIDs"] as? [String] ?? []
+        self.assigneeStates = data["assigneeStates"] as? [String: String] ?? [:]
         self.teamId = data["teamId"] as? String
         self.projectId = data["projectId"] as? String
         

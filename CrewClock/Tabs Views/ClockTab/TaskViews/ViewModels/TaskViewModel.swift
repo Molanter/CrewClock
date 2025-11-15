@@ -43,14 +43,14 @@ final class TaskViewModel: ObservableObject {
                     if let me = self.me {
                         switch self.filter {
                         case .assignedToMe:
-                            // Fallback: still query the map field path but without extra ordering
-                            fallback = fallback.whereField("assigneeUIDs.\(me)", isEqualTo: "user")
+                            // Fallback: tasks directly assigned to me, without extra ordering
+                            fallback = fallback.whereField("assigneeUserUIDs", arrayContains: me)
                         case .createdByMe:
                             fallback = fallback.whereField("creatorUID", isEqualTo: me)
                         case .all:
                             let orFilter = Filter.orFilter([
                                 Filter.whereField("creatorUID", isEqualTo: me),
-                                Filter.whereField("assigneeUIDs.\(me)", isEqualTo: "user")
+                                Filter.whereField("assigneeUserUIDs", arrayContains: me)
                             ])
                             fallback = fallback.whereFilter(orFilter)
                         }
@@ -110,22 +110,21 @@ final class TaskViewModel: ObservableObject {
             .order(by: "updatedAt", descending: true)
         let baseFiltered: Query = TaskModel.collection
             .order(by: "updatedAt", descending: true) // single sort avoids composite index with equality filters
-        
+
         let query: Query
         switch filter {
         case .assignedToMe:
-            // assigneeUIDs is a map: uid -> "user"
-            // Query the map field path for this user id.
-            query = baseFiltered.whereField("assigneeUIDs.\(me)", isEqualTo: "user")
+            // Tasks directly assigned to me
+            query = baseFiltered.whereField("assigneeUserUIDs", arrayContains: me)
 
         case .createdByMe:
             query = baseFiltered.whereField("creatorUID", isEqualTo: me)
 
         case .all:
-            // All = (assigned to me) OR (created by me)
+            // All = (created by me) OR (assigned directly to me)
             let orFilter = Filter.orFilter([
                 Filter.whereField("creatorUID", isEqualTo: me),
-                Filter.whereField("assigneeUIDs.\(me)", isEqualTo: "user")
+                Filter.whereField("assigneeUserUIDs", arrayContains: me)
             ])
             query = baseFiltered.whereFilter(orFilter)
         }
@@ -136,9 +135,8 @@ final class TaskViewModel: ObservableObject {
         listener?.remove(); listener = nil
     }
 
-    /// Note: Queries filter on "creatorUID" / "assigneeUIDs" and sort by "dueAt" (Timestamp?) and "updatedAt" (Timestamp).
-    /// Ensure creatorUID equals the current Auth.uid. Assigned filter uses ARRAY_CONTAINS on "assigneeUIDs".
-    /// Create rules should allow: request.resource.data.creatorUID == request.auth.uid
+    /// Note: Queries filter on "creatorUID" / "assigneeUserUIDs" and sort by "dueAt" (Timestamp?) and "updatedAt" (Timestamp).
+    /// Ensure creatorUID equals the current Auth.uid. Assigned filter uses ARRAY_CONTAINS on "assigneeUserUIDs".
     func createTask(
         title: String,
         notes: String = "",
@@ -161,7 +159,12 @@ final class TaskViewModel: ObservableObject {
             "updatedAt": now
         ]
         if let dueAt { data["dueAt"] = dueAt }
-        if let assignedTo { data["assigneeUIDs"] = [assignedTo] }
+        if let assignedTo {
+            // Direct user assignment: store in assigneeUserUIDs array
+            data["assigneeUserUIDs"] = [assignedTo]
+            // Initialize per-assignee state as "sent" for this user
+            data["assigneeStates"] = [assignedTo: "sent"]
+        }
         if !teamId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             data["teamId"] = teamId
         }
@@ -174,12 +177,21 @@ final class TaskViewModel: ObservableObject {
         try await ref.setData(data)
     }
 
-    func setStatus(taskId: String, status: String) async throws {
-        let ref = TaskModel.collection.document(taskId)
-        try await ref.setData([
-            "status": status,
-            "updatedAt": Timestamp(date: Date())
-        ], merge: true)
+    /// Update the task's global status and the current user's per-assignee status,
+    /// then persist via `updateTask(_:)` so the full model (including assigneeStates array/map)
+    /// is written consistently.
+    func setStatus(for task: TaskFB, status: String) async throws {
+        var updatedTask = task
+        // Update global task status
+        updatedTask.status = status
+        
+        // Update per-user assignee state in the model
+        if let me = me {
+            updatedTask.assigneeStates[me] = status
+        }
+        
+        // Persist via the central update method (handles deletes, notifications, etc.)
+        try await updateTask(updatedTask)
     }
 
     /// Update an existing task after editing.
@@ -202,11 +214,18 @@ final class TaskViewModel: ObservableObject {
             data["dueAt"] = FieldValue.delete()
         }
 
-        // assigneeUIDs: set non-empty or delete
-        if !task.assigneeUIDs.isEmpty {
-            data["assigneeUIDs"] = task.assigneeUIDs
+        // assigneeUserUIDs: set non-empty or delete
+        if !task.assigneeUserUIDs.isEmpty {
+            data["assigneeUserUIDs"] = task.assigneeUserUIDs
         } else {
-            data["assigneeUIDs"] = FieldValue.delete()
+            data["assigneeUserUIDs"] = FieldValue.delete()
+        }
+
+        // assigneeStates: set non-empty or delete
+        if !task.assigneeStates.isEmpty {
+            data["assigneeStates"] = task.assigneeStates
+        } else {
+            data["assigneeStates"] = FieldValue.delete()
         }
 
         // teamId: set non-empty or delete
@@ -222,8 +241,7 @@ final class TaskViewModel: ObservableObject {
         } else {
             data["projectId"] = FieldValue.delete()
         }
-        let recipientsDict = task.assigneeUIDs ?? [:]
-        let recipients = recipientsDict.filter { $0.value == "user" }.map { $0.key }
+        let recipients = task.assigneeUserUIDs ?? []
         try await manager.upsert(
             data,
             at: FSPath.Task(id: task.id),

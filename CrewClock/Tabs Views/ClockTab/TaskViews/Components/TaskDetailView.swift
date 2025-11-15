@@ -8,6 +8,7 @@
 
 import SwiftUI
 import FirebaseFirestore
+import FirebaseAuth
 
 struct TaskDetailView: View {
     @EnvironmentObject var publishedVars: PublishedVariebles
@@ -46,7 +47,7 @@ struct TaskDetailView: View {
         GlassList {
             infoSection(task)
             
-            crewSection(entities: task.assigneeUIDs)
+            crewSection(task: task)
             
             actionsSection
         }
@@ -90,14 +91,46 @@ struct TaskDetailView: View {
     }
     //MARK: - ViewBuilders
     @ViewBuilder
-    private func crewSection(entities: [String: String]) -> some View {
+    private func crewSection(task: TaskFB) -> some View {
         Section("Assigned to") {
-            ForEach(Array(entities.keys), id: \.self) { id in
-                let kind = entities[id]?.lowercased() ?? "user"
-                if kind == "team" {
-                    TeamRowView(teamId: id)
-                } else {
-                    UserRowView(uid: id)
+            if task.assigneeUserUIDs.isEmpty {
+                Text("No assignees")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(task.assigneeUserUIDs, id: \.self) { uid in
+                    HStack {
+                        UserRowView(uid: uid)
+
+                        Spacer()
+
+                        let rawStatus = task.assigneeStates[uid] ?? "pending"
+
+                        let iconName: String = {
+                            switch rawStatus.lowercased() {
+                            case "rejected": return "xmark.circle.fill"
+                            case "accepted": return "checkmark.circle.fill"
+                            case "done": return "flag.checkered"
+                            case "sent": return "paperplane.fill"
+                            case "seen": return "eye"
+                            default: return "paperplane.fill"
+                            }
+                        }()
+
+                        let iconColor: Color = {
+                            switch rawStatus.lowercased() {
+                            case "rejected": return .red
+                            case "accepted": return .green
+                            case "done": return .primary
+                            case "sent": return .secondary
+                            case "seen": return .secondary
+                            default: return .secondary
+                            }
+                        }()
+
+                        Image(systemName: iconName)
+                            .foregroundStyle(iconColor)
+                            .font(.body)
+                    }
                 }
             }
         }
@@ -108,8 +141,16 @@ struct TaskDetailView: View {
         saving = true
         Task {
             defer { saving = false }
-            do { try await vm.setStatus(taskId: taskId, status: status) }
-            catch { print("Status update failed:", error) }
+            do {
+                try await vm.setStatus(for: task!, status: status)
+                // Reload the task so UI reflects updated assigneeStates / status
+                await fetchTask()
+            } catch {
+                print("Status update failed:", error)
+                await MainActor.run {
+                    loadError = error.localizedDescription
+                }
+            }
         }
     }
     
@@ -142,6 +183,19 @@ struct TaskDetailView: View {
 
             // Initialize TaskFB from the raw Firestore data
             task = TaskFB(data: data, documentId: snap.documentID)
+            
+            // If this user was in "sent" state, mark as "seen" on open
+            if let me = Auth.auth().currentUser?.uid, var currentTask = task {
+                if currentTask.assigneeStates[me] == "sent" {
+                    currentTask.assigneeStates[me] = "seen"
+                    task = currentTask
+                    do {
+                        try await vm.updateTask(currentTask)
+                    } catch {
+                        print("Failed to mark task as seen:", error)
+                    }
+                }
+            }
         } catch {
             loadError = error.localizedDescription
             task = nil
