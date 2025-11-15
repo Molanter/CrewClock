@@ -137,7 +137,7 @@ enum SettingsNavigationLinks: CaseIterable, Identifiable, Hashable {
         case .preferences:
             Text("Time Tracking Preferences View")
         case .appearance:
-            Text("Appearance Settings View")
+            AppearanceView()
         case .notifications:
             NotificationsView()
         case .faq:

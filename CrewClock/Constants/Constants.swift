@@ -14,9 +14,22 @@ struct K {
     }
     
     struct Colors {
-        static var accent = Color.green
+        /// Key used for storing the accent color index in AppStorage/UserDefaults.
+        static let accentIndexKey = "appearance.accentIndex"
+
+        /// Accent color derived from the stored accent index.
+        /// Falls back to `.green` if the index is out of range.
+        static var accent: Color {
+            let index = UserDefaults.standard.integer(forKey: accentIndexKey)
+            if teamColors.indices.contains(index) {
+                return teamColors[index]
+            } else {
+                return .green
+            }
+        }
         static var teamColors: [Color] = [.red, .blue, .yellow, .gray, .green, .purple, .orange, .pink, .indigo, .cyan]
         
+        /// Returns a human‑readable name for a given SwiftUI `Color`.
         static func colorName(_ color: Color) -> String {
             switch color {
             case .red:
@@ -29,15 +42,15 @@ struct K {
                 return "Gray"
             case .green:
                 return "Green"
-            case . purple:
+            case .purple:
                 return "Purple"
             case .orange:
                 return "Orange"
             case .pink:
                 return "Pink"
-            case . indigo:
+            case .indigo:
                 return "Indigo"
-            case . cyan:
+            case .cyan:
                 return "Cyan"
             default:
                 return "Unknown"
@@ -58,9 +71,48 @@ struct K {
     }
 
     struct UI {
-        static var cornerRadius: CGFloat = 30
-        static var padding: CGFloat = 15
-        static var opacity = 0.3
+        // MARK: - Keys for AppStorage / UserDefaults
+        static let cornerRadiusKey = "appearance.cornerRadius"
+        static let paddingKey = "appearance.padding"
+        static let opacityKey = "appearance.opacity"
+
+        // MARK: - Default values
+        static let defaultCornerRadius: CGFloat = 30
+        static let defaultPadding: CGFloat = 15
+        static let defaultOpacity: Double = 0.3
+
+        /// Corner radius used across the app. Backed by UserDefaults.
+        static var cornerRadius: CGFloat {
+            get {
+                let stored = UserDefaults.standard.double(forKey: cornerRadiusKey)
+                return stored == 0 ? defaultCornerRadius : stored
+            }
+            set {
+                UserDefaults.standard.set(Double(newValue), forKey: cornerRadiusKey)
+            }
+        }
+
+        /// Default padding used across the app. Backed by UserDefaults.
+        static var padding: CGFloat {
+            get {
+                let stored = UserDefaults.standard.double(forKey: paddingKey)
+                return stored == 0 ? defaultPadding : stored
+            }
+            set {
+                UserDefaults.standard.set(Double(newValue), forKey: paddingKey)
+            }
+        }
+
+        /// Default opacity used across the app. Backed by UserDefaults.
+        static var opacity: Double {
+            get {
+                let stored = UserDefaults.standard.double(forKey: opacityKey)
+                return stored == 0 ? defaultOpacity : stored
+            }
+            set {
+                UserDefaults.standard.set(newValue, forKey: opacityKey)
+            }
+        }
     }
     struct Emoji {
         static var emojiNothingArray = [
@@ -146,3 +198,4 @@ struct K {
         )
     }
 }
+
